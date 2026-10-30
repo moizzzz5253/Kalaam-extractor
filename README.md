@@ -47,12 +47,18 @@ npm run dev          # http://localhost:5173 (proxies /api to :8000)
 npm run typecheck
 npm run build
 ```
+If the backend runs on another port, set `KX_API_URL` (e.g. in a git-ignored `frontend/.env.local`:
+`KX_API_URL=http://127.0.0.1:8010`).
+
 Implemented: library list, PDF import with duplicate feedback, indexing on open (stored index reused),
 lazy page rendering with a bounded canvas count, bookmark navigation, page jump, internal link hit-areas.
 
 Verified: typecheck and production build pass; `/api` proxy verified end to end with curl.
-**Not yet verified:** the viewer has not been exercised in a real browser session. Run it and
-report anything that looks wrong.
+Verified in a real browser (synthetic test PDF only): library list, opening a document, page rendering,
+bookmark and contents-link navigation, previous/next, page jump, zoom. No console errors.
+
+Known rough edges: after zooming, the view drifts slightly (end of the previous page shows above the
+current one); file sizes under 0.1 MB show as "0.0 MB".
 
 Known simplifications: link hit-areas assume an unrotated page with no CropBox offset;
 named destinations are not navigable yet.

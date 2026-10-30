@@ -38,7 +38,8 @@ new "Handy Book" PDF from the selected stanzas, using a background template.
 ## Current status (Milestone 1)
 - Done and tested: upload, duplicate detection, outline and link extraction, once-only indexing,
   on-demand page rendering, library and lazy viewer.
-- Not yet verified: the viewer in a real browser.
+- Viewer verified in a real browser with the synthetic fixture and the real 30-page sample
+  (Arabic renders correctly; index-grid links navigate). First page of the 37 MB sample takes ~10 s.
 - Next: bounding-box stanza selector, saved selections, Handy Book builder, PDF export.
 
 ## Test data
