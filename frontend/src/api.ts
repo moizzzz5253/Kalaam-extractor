@@ -49,6 +49,9 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 export const api = {
+  health: (): Promise<{ ok: boolean; version: string }> =>
+    fetch("/api/health").then((r) => json<{ ok: boolean; version: string }>(r)),
+
   listDocuments: (): Promise<DocumentSummary[]> =>
     fetch("/api/documents").then((r) => json<DocumentSummary[]>(r)),
 
@@ -66,4 +69,7 @@ export const api = {
     ),
 
   pdfUrl: (id: number) => `/api/documents/${id}/pdf`,
+
+  pageImageUrl: (id: number, page0: number, zoom: number) =>
+    `/api/documents/${id}/pages/${page0}.png?zoom=${zoom}`,
 };

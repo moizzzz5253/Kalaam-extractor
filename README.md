@@ -53,12 +53,18 @@ If the backend runs on another port, set `KX_API_URL` (e.g. in a git-ignored `fr
 Implemented: library list, PDF import with duplicate feedback, indexing on open (stored index reused),
 lazy page rendering with a bounded canvas count, bookmark navigation, page jump, internal link hit-areas.
 
-Verified: typecheck and production build pass; `/api` proxy verified end to end with curl.
-Verified in a real browser (synthetic test PDF only): library list, opening a document, page rendering,
-bookmark and contents-link navigation, previous/next, page jump, zoom. No console errors.
+UI: **Noor Scope** (`docs/frontend-design-instructions.md`). Top bar with backend LINK light and FAULTS,
+signal-flow pipeline with real step timings, FILES and KALAAM on the left, viewer with page/zoom
+toolbar, fit-to-width and filmstrip, inspector on the right (page geometry in pt/mm, step inspector,
+API timing trace, API log), readable fault reports, four theme presets plus custom colours.
+Style guide with a live contrast table: open `http://localhost:5173/#styleguide`.
+Keyboard: ← → page, Home/End, + − zoom. Deviations from the brief are listed in `DESIGN_NOTES.md`.
 
-Known rough edges: after zooming, the view drifts slightly (end of the previous page shows above the
-current one); file sizes under 0.1 MB show as "0.0 MB".
+Verified: typecheck and production build pass; `/api` proxy verified end to end with curl.
+Verified in a real browser with the synthetic fixture and the real 30-page sample: import, opening,
+page rendering, bookmarks, index-grid links, filmstrip, page jump, zoom (current page stays anchored),
+fit width, keyboard shortcuts, pipeline timings, theme presets (persist across reloads), 1024 and 800 px
+windows. All four presets pass WCAG AA contrast.
 
 Known simplifications: link hit-areas assume an unrotated page with no CropBox offset;
 named destinations are not navigable yet.

@@ -1,0 +1,54 @@
+/* Noor Scope tokens. Colour variables (--bg, --phos, ...) are set on :root by src/theme.ts from
+   the active preset; the values below are the "Noor Night" defaults used before the script runs.
+   Everything else (spacing, type, motion) is fixed here. See docs/frontend-design-instructions.md §4. */
+
+:root {
+  --bg:     #040f0c;
+  --top:    #061511;
+  --panel:  #0a1b16;
+  --panel2: #0d221c;
+  --line:   #173a31;
+  --line2:  #22584a;
+  --phos:   #3ee6a8;
+  --amber:  #e0b35a;
+  --cyan:   #7fd6e8;
+  --red:    #e0606a;
+  --violet: #b9a3e3;
+  --text:   #efe8d4;
+  --dim:    #8fa79c;
+
+  /* Derived */
+  --well:      color-mix(in srgb, var(--bg) 70%, #000);   /* log, scope and input wells */
+  --desk:      color-mix(in srgb, var(--bg) 82%, #000);   /* field under the PDF page */
+  --glow-phos: color-mix(in srgb, var(--phos) 35%, transparent);
+  --glow-amber: color-mix(in srgb, var(--amber) 35%, transparent);
+  --glow-red:  color-mix(in srgb, var(--red) 45%, transparent);
+
+  /* Type */
+  --mono:   "JetBrains Mono", ui-monospace, "Cascadia Code", Consolas, Menlo, monospace;
+  --arabic: "Amiri", "Noto Naskh Arabic", "Scheherazade New", serif;
+  --naskh:  "Noto Naskh Arabic", "Scheherazade New", "Amiri", serif;
+  --urdu:   "Noto Nastaliq Urdu", "Noto Naskh Arabic", serif;
+
+  /* Spacing (4px scale) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s6: 24px;
+  --s8: 32px;
+
+  /* Motion */
+  --t-hover: 120ms;
+  --t-panel: 200ms;
+  --t-state: 300ms;
+  --ease-physical: cubic-bezier(.2, .9, .3, 1.2);
+
+  --clip: 12px; /* clipped top-right corner on panels */
+}
+
+/* Light presets: wells and desk lighten instead of darken. */
+:root[data-tone="light"] {
+  --well: color-mix(in srgb, var(--bg) 60%, #fff);
+  --desk: color-mix(in srgb, var(--bg) 88%, #000);
+}
