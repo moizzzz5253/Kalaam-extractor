@@ -268,6 +268,8 @@ bdi, [dir="auto"] { unicode-bidi: isolate; }
 .kalaam-item:disabled { color: var(--dim); cursor: default; }
 .k-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .k-page { flex: none; color: var(--dim); font-size: 12px; }
+.k-count { flex: none; font-size: 12px; padding: 0 4px; border: 1px solid var(--amber); color: var(--amber); }
+.k-count.all-ok { border-color: var(--phos); color: var(--phos); }
 
 /* ---------- Viewer ---------- */
 
@@ -278,6 +280,10 @@ bdi, [dir="auto"] { unicode-bidi: isolate; }
   border-bottom: 1px solid var(--line); background: var(--panel2);
 }
 .tsep { width: 1px; height: 18px; background: var(--line2); margin: 0 6px; }
+.tbtn-label { width: auto; display: inline-flex; gap: 6px; padding: 0 8px; font-size: 12px; letter-spacing: .12em; }
+.tbtn-label.on { color: var(--amber); border-color: var(--amber); background: color-mix(in srgb, var(--amber) 10%, transparent); }
+.toolbar-meta { margin-left: auto; padding-right: var(--s2); color: var(--dim); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.desk.is-drawing { outline: 1px dashed var(--amber); outline-offset: -1px; }
 .zoom-readout { min-width: 52px; text-align: center; color: var(--text); font-size: 12px; }
 .page-input { display: flex; align-items: center; gap: 4px; padding: 0 4px; }
 .page-input input {
@@ -287,7 +293,7 @@ bdi, [dir="auto"] { unicode-bidi: isolate; }
 .page-total { color: var(--dim); white-space: nowrap; }
 
 .desk { flex: 1; min-height: 0; overflow: auto; position: relative; padding: var(--s4) var(--s6); background: var(--desk); }
-.page { position: relative; margin: 0 auto var(--s4); background: var(--panel2); box-shadow: 0 2px 10px color-mix(in srgb, #000 45%, transparent); }
+.page { position: relative; margin: 0 auto var(--s4); background: var(--panel2); box-shadow: 0 2px 10px color-mix(in srgb, #000 45%, transparent); overflow: hidden; }
 .page.is-rendered { background: #fff; } /* the PDF page itself is paper; the one literal colour, on purpose */
 .page canvas { display: block; position: relative; z-index: 1; }
 .page-ghost { position: absolute; inset: 0; display: grid; place-items: center; color: var(--line2); font-size: 32px; }
@@ -361,6 +367,52 @@ bdi, [dir="auto"] { unicode-bidi: isolate; }
 .log .warn { color: var(--amber); }
 .log .error { color: var(--red); font-weight: 700; }
 
+/* Selection editor and stanza list */
+.sel-editor { margin: 0 var(--s3); display: flex; flex-direction: column; gap: var(--s2); }
+.sel-row { display: flex; gap: var(--s2); }
+.sel-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s2); }
+.field { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.field.grow { flex: 1; }
+.field > span { color: var(--dim); font-size: 12px; letter-spacing: .06em; }
+.field input {
+  width: 100%; min-width: 0; height: 28px; padding: 0 6px; outline: 0;
+  background: var(--well); border: 1px solid var(--line2); color: var(--text);
+}
+.sel-row .field:first-child input { width: 56px; }
+.field input:focus { border-color: var(--phos); box-shadow: 0 0 0 1px var(--phos); }
+.field input:disabled { opacity: .5; }
+.sel-meta { color: var(--dim); font-size: 12px; }
+.sel-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--s2); }
+.check.verify span { color: var(--phos); }
+.btn.danger:hover:not(:disabled) { border-color: var(--red); color: var(--red); }
+
+.reuse { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: var(--s3) var(--s3) 0; padding-top: var(--s2); border-top: 1px dashed var(--line); }
+.reuse .dim { font-size: 12px; letter-spacing: .06em; margin-right: 2px; }
+
+/* Focus: only the page and its toolbar, full screen. */
+/* Top bar and pipeline are hidden, so the grid is the only row left. */
+.app.is-focus { grid-template-rows: minmax(0, 1fr); height: 100vh; }
+.app.is-focus .col-center { height: auto; }
+.app.is-focus .topbar, .app.is-focus .pipe-panel, .app.is-focus .col-left, .app.is-focus .col-right { display: none; }
+.app.is-focus .grid { grid-template-columns: minmax(0, 1fr); padding: 0; gap: 0; }
+.app.is-focus .viewer-panel { clip-path: none; border: 0; }
+.app.is-focus .viewer-panel > h3 { display: none; }
+.app.is-focus .filmstrip { height: 72px; }
+.app.is-focus .thumb { width: 40px; height: 56px; }
+
+.stanza-list { list-style: none; margin: 0 var(--s3) var(--s2); padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.stanza-row {
+  width: 100%; display: grid; grid-template-columns: 32px minmax(0, 1fr) auto auto; gap: var(--s2); align-items: center;
+  padding: 4px 8px; text-align: start; cursor: pointer; background: var(--panel2); border: 1px solid var(--line); color: var(--text);
+}
+.stanza-row:hover { border-color: var(--line2); }
+.stanza-row.on { border-color: var(--amber); box-shadow: inset 0 0 0 1px var(--amber); }
+.stanza-row .sn { color: var(--amber); }
+.stanza-row .st { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stanza-row .sp { color: var(--dim); font-size: 12px; white-space: nowrap; }
+.badge { font-size: 12px; padding: 0 5px; border: 1px solid var(--line2); color: var(--dim); white-space: nowrap; }
+.badge.ok { border-color: var(--phos); color: var(--phos); }
+
 /* ---------- Fault ---------- */
 
 .fault {
@@ -395,17 +447,44 @@ bdi, [dir="auto"] { unicode-bidi: isolate; }
 .toast.error { border-color: var(--red); box-shadow: 0 0 20px var(--glow-red); }
 @keyframes toastin { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: none; } }
 
-/* ---------- Bounding-box states (style guide now; editor next milestone) ---------- */
+/* ---------- Bounding boxes (brief §8). Style-guide samples use .bbox-<state>; the editor uses .is-<state>. ---------- */
 
-.bbox { position: absolute; inset: 18% 14%; border: 1px solid var(--line2); }
-.bbox-hover { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 6%, transparent); }
-.bbox-selected { border: 2px solid var(--amber); box-shadow: 0 0 0 999px color-mix(in srgb, #000 35%, transparent); }
+.box-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.box-layer.is-capturing { pointer-events: auto; }
+.box-layer.is-drawing { cursor: crosshair; }
+
+.bbox { position: absolute; border: 1px solid var(--line2); pointer-events: auto; cursor: grab; touch-action: none;
+  transition: border-color var(--t-hover), background-color var(--t-hover); }
+.sg-paper .bbox { inset: 18% 14%; cursor: default; }
+.bbox:hover, .bbox-hover { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 6%, transparent); }
+.bbox.is-verified, .bbox-approved { border: 1px solid var(--phos); }
+.bbox.is-selected, .bbox-selected {
+  border: 2px solid var(--amber); background: transparent; z-index: 2;
+  box-shadow: 0 0 0 9999px color-mix(in srgb, #000 35%, transparent); /* dims the page outside the box */
+}
+.bbox.is-selected:active { cursor: grabbing; }
+.bbox.is-saving { border-style: dashed; }
 .bbox-suggested { border: 1px dashed var(--cyan); }
-.bbox-approved { border: 1px solid var(--phos); }
-.bbox-pill { position: absolute; top: -10px; left: -1px; padding: 0 6px; font-size: 12px; line-height: 18px; background: var(--panel); border: 1px solid currentColor; color: var(--amber); }
-.bbox-approved .bbox-pill { font-family: var(--arabic); color: var(--phos); }
+.bbox.is-drawing-box { border: 1px dashed var(--cyan); background: color-mix(in srgb, var(--cyan) 8%, transparent); pointer-events: none; }
+.bbox.is-ghost { border-color: var(--amber); background: color-mix(in srgb, var(--amber) 8%, transparent); }
+.box-layer.is-drawing .bbox { cursor: pointer; }
+
+.bbox-pill { position: absolute; top: -10px; left: -1px; padding: 0 6px; font-size: 12px; line-height: 18px; background: var(--panel); border: 1px solid currentColor; color: var(--amber); pointer-events: none; }
+.bbox.is-verified .bbox-pill, .bbox-approved .bbox-pill { color: var(--phos); }
+.bbox-approved .bbox-pill { font-family: var(--arabic); }
+.bbox-mark { position: absolute; top: -10px; right: -1px; padding: 0 5px; font-size: 12px; line-height: 18px; background: var(--panel); color: var(--phos); border: 1px solid var(--phos); pointer-events: none; }
 .bbox-conf { position: absolute; top: -10px; right: -1px; padding: 0 5px; font-size: 12px; line-height: 18px; background: var(--panel); color: var(--cyan); border: 1px solid var(--cyan); }
+.bbox-readout {
+  position: absolute; left: -2px; top: calc(100% + 4px); white-space: nowrap; pointer-events: none;
+  padding: 1px 6px; font-size: 12px; background: var(--top); color: var(--cyan); border: 1px solid var(--line2);
+}
 .bbox-h { position: absolute; width: 8px; height: 8px; background: var(--panel); border: 1px solid var(--amber); }
+.bbox .bbox-h { width: 10px; height: 10px; }
+.bbox .h-nw, .bbox .h-se { cursor: nwse-resize; } .bbox .h-ne, .bbox .h-sw { cursor: nesw-resize; }
+.bbox .h-n, .bbox .h-s { cursor: ns-resize; } .bbox .h-e, .bbox .h-w { cursor: ew-resize; }
+.bbox .h-nw { left: -6px; top: -6px; } .bbox .h-n { left: calc(50% - 5px); top: -6px; } .bbox .h-ne { right: -6px; top: -6px; }
+.bbox .h-e { right: -6px; top: calc(50% - 5px); } .bbox .h-se { right: -6px; bottom: -6px; } .bbox .h-s { left: calc(50% - 5px); bottom: -6px; }
+.bbox .h-sw { left: -6px; bottom: -6px; } .bbox .h-w { left: -6px; top: calc(50% - 5px); }
 .h-nw { left: -5px; top: -5px; } .h-n { left: calc(50% - 4px); top: -5px; } .h-ne { right: -5px; top: -5px; }
 .h-e { right: -5px; top: calc(50% - 4px); } .h-se { right: -5px; bottom: -5px; } .h-s { left: calc(50% - 4px); bottom: -5px; }
 .h-sw { left: -5px; bottom: -5px; } .h-w { left: -5px; top: calc(50% - 4px); }

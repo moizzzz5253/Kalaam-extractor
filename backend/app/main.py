@@ -4,13 +4,15 @@ from __future__ import annotations
 import re
 import secrets
 import shutil
+from functools import lru_cache
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Response
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from . import db
-from .pdf_inspect import file_sha256, inspect_pdf, render_page_png
+from .pdf_inspect import file_sha256, inspect_pdf, open_pdf, render_page_png
 
 MAX_UPLOAD_BYTES = 1024 * 1024 * 1024  # 1 GB, configurable later via settings
 
@@ -100,7 +102,6 @@ def upload_document(file: UploadFile = File(...)) -> dict:
     shutil.move(str(staging), final)
 
     try:
-        from .pdf_inspect import open_pdf
         d = open_pdf(final)
         pages = d.page_count
         d.close()
@@ -180,3 +181,119 @@ def _require(doc_id: int) -> db.Document:
     if doc is None:
         raise HTTPException(404, "Document not found")
     return doc
+
+
+# ---------- Stanzas: hand-drawn boxes, stored as metadata pointing into the original PDF ----------
+
+MIN_STANZA_PT = 4.0  # smaller boxes are almost certainly a stray click
+
+
+class StanzaIn(BaseModel):
+    page: int = Field(ge=0)
+    rect: tuple[float, float, float, float]  # x0, y0, x1, y1 in PDF points, top-left origin
+    number: int | None = Field(default=None, ge=1)
+    title: str = Field(default="", max_length=500)
+
+
+class StanzaPatch(BaseModel):
+    rect: tuple[float, float, float, float] | None = None
+    number: int | None = Field(default=None, ge=1)
+    title: str | None = Field(default=None, max_length=500)
+    verified: bool | None = None
+    new_page: bool | None = None
+
+
+def _stanza_out(st: db.Stanza) -> dict:
+    return {
+        "id": st.id,
+        "document_id": st.document_id,
+        "page": st.page,
+        "rect": [st.x0, st.y0, st.x1, st.y1],
+        "number": st.number,
+        "title": st.title,
+        "verified": st.verified,
+        "new_page": st.new_page,
+        "updated_at": st.updated_at.isoformat(),
+    }
+
+
+@lru_cache(maxsize=16)
+def _page_sizes(storage_name: str) -> tuple[tuple[float, float], ...]:
+    """Every page's size in points, read once per stored PDF (originals never change)."""
+    d = open_pdf(db.data_dir() / "pdfs" / storage_name)
+    try:
+        return tuple((p.rect.width, p.rect.height) for p in d)
+    finally:
+        d.close()
+
+
+def _page_size(doc: db.Document, page: int) -> tuple[float, float]:
+    if not 0 <= page < doc.page_count:
+        raise HTTPException(422, f"Page {page} is outside 0..{doc.page_count - 1}")
+    return _page_sizes(doc.storage_name)[page]
+
+
+def _clean_rect(rect: tuple[float, float, float, float], size: tuple[float, float]) -> tuple[float, ...]:
+    """Normalise corner order, clamp to the page and reject boxes too small to be a stanza."""
+    w, h = size
+    x0, x1 = sorted((rect[0], rect[2]))
+    y0, y1 = sorted((rect[1], rect[3]))
+    x0, x1 = max(0.0, x0), min(w, x1)
+    y0, y1 = max(0.0, y0), min(h, y1)
+    if x1 - x0 < MIN_STANZA_PT or y1 - y0 < MIN_STANZA_PT:
+        raise HTTPException(422, f"Box must be at least {MIN_STANZA_PT:g} pt wide and tall inside the page")
+    return tuple(round(v, 2) for v in (x0, y0, x1, y1))
+
+
+@app.get("/api/documents/{doc_id}/stanzas")
+def list_stanzas(doc_id: int) -> list[dict]:
+    _require(doc_id)
+    return [_stanza_out(s) for s in db.list_stanzas(doc_id)]
+
+
+@app.post("/api/documents/{doc_id}/stanzas", status_code=201)
+def create_stanza(doc_id: int, body: StanzaIn) -> dict:
+    doc = _require(doc_id)
+    x0, y0, x1, y1 = _clean_rect(body.rect, _page_size(doc, body.page))
+    with db.session() as s:
+        st = db.Stanza(
+            document_id=doc_id, page=body.page, x0=x0, y0=y0, x1=x1, y1=y1,
+            number=body.number or db.next_stanza_number(doc_id), title=body.title.strip(),
+        )
+        s.add(st)
+        s.commit()
+        s.refresh(st)
+        return _stanza_out(st)
+
+
+@app.patch("/api/stanzas/{stanza_id}")
+def update_stanza(stanza_id: int, body: StanzaPatch) -> dict:
+    with db.session() as s:
+        st = s.get(db.Stanza, stanza_id)
+        if st is None:
+            raise HTTPException(404, "Stanza not found")
+        if body.rect is not None:
+            doc = _require(st.document_id)
+            st.x0, st.y0, st.x1, st.y1 = _clean_rect(body.rect, _page_size(doc, st.page))
+        if body.number is not None:
+            st.number = body.number
+        if body.title is not None:
+            st.title = body.title.strip()
+        if body.verified is not None:
+            st.verified = body.verified
+        if body.new_page is not None:
+            st.new_page = body.new_page
+        s.commit()
+        s.refresh(st)
+        return _stanza_out(st)
+
+
+@app.delete("/api/stanzas/{stanza_id}", status_code=204)
+def delete_stanza(stanza_id: int) -> Response:
+    with db.session() as s:
+        st = s.get(db.Stanza, stanza_id)
+        if st is None:
+            raise HTTPException(404, "Stanza not found")
+        s.delete(st)
+        s.commit()
+    return Response(status_code=204)

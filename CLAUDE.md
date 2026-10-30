@@ -13,6 +13,14 @@ new "Handy Book" PDF from the selected stanzas, using a background template.
 
 ## Decisions already made
 - Stanzas are selected by hand (bounding box drawn on the page). Automatic grouping is optional later.
+  Any number of boxes may be drawn on the same source page.
+- Handy Book layout: stanzas FLOW, several per output page, in order, at original size where possible.
+  A new output page starts only when the next stanza does not fit, or when that stanza is marked
+  "start on a new page" (stored per stanza as `new_page`).
+- Full-page display is a must: the stanza selector has a FOCUS mode (full screen, whole page fitted),
+  and the Handy Book composer must preview every output page as a whole page in the same way.
+- Box reuse means reusing a box's SIZE for another stanza of similar size (STAMP: click where the stanza
+  starts). Pasting at the same position (Ctrl+V) is a secondary option.
 - Output page numbers: sequential across the whole book, written in Arabic-Indic digits (١٢٣).
 - Default output page size: A4. A5 and smaller must be selectable for printing.
 - Scaling: keep original size where possible. Warn when a stanza would shrink below 70% of its original size.
@@ -40,7 +48,9 @@ new "Handy Book" PDF from the selected stanzas, using a background template.
   on-demand page rendering, library and lazy viewer.
 - Viewer verified in a real browser with the synthetic fixture and the real 30-page sample
   (Arabic renders correctly; index-grid links navigate). First page of the 37 MB sample takes ~10 s.
-- Next: bounding-box stanza selector, saved selections, Handy Book builder, PDF export.
+- Milestone 2 (stanza selector) done: draw / move / resize boxes, keyboard nudging, stamp a copied size,
+  paste at same position, focus mode, verify flag, saved via /api/.../stanzas.
+- Next: Handy Book builder (COMPOSE) with full-page previews, then PDF export.
 
 ## Test data
 - A 30-page sample PDF exists (ZikreHusain1446-30pgs.pdf). It is a third-party document: do NOT commit it.

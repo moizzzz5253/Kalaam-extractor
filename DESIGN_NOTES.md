@@ -48,6 +48,34 @@ Reference used: PDF//SCOPE `app/static/style.css`, `theme.js`, `index.html` (`mo
 | `?` shortcut overlay, Ctrl+K palette, undo/redo (§11) | Not built yet | Arrive with the stanza editor. |
 | Numeral style setting (§5) | Not built yet | Arrives with output page numbering. |
 
+## Second pass: stanza selector (bounding-box editor, brief §8)
+
+### Built as specified
+- Box states: idle, hover (cyan), selected (amber, 8 handles, page outside dimmed with a large
+  box-shadow), approved/verified (solid green with a check mark), stanza number pill.
+- Live readout while dragging: w × h and x, y in PDF points. Pointer moves are handled once per animation
+  frame. The overlay sits above the canvas and only captures the pointer while drawing or stamping, so
+  scrolling and page links keep working. The PDF canvas is never re-rendered by box changes.
+- Keyboard: arrows nudge 1 pt, Shift 10 pt, Alt resize, Delete, [ ] previous/next stanza, B draw, Esc.
+
+### Added at the owner's request
+- FOCUS mode (F): real full screen when the browser allows it, otherwise a full-window layout; only the
+  page, toolbar and filmstrip remain, and the whole page is fitted. Leaving restores the previous zoom.
+- Fit whole page button.
+- STAMP (S): reuse a box's width and height for another stanza of similar size; a ghost box follows the
+  pointer and a click places it with its top-left corner there.
+- Ctrl+C / Ctrl+V: paste a box at the same position on another page; "same box on next page" button.
+- Per-stanza "start on a new page" flag for the Handy Book flow layout.
+
+### Deviations
+| Brief | What we did | Why |
+|---|---|---|
+| Snap guides to neighbouring boxes and margins (§8) | Not built yet | Stamping and nudging cover alignment for now; add if boxes drift. |
+| Suggested (AI) boxes with confidence chip (§8) | Style only (style guide); no detection | Stanzas are selected by hand (project decision). |
+| Undo / redo with Ctrl+Z (§11) | UNDO on the delete notice only | Move and resize are easy to reverse with the keyboard; full history later. |
+| Stanza label in Amiri for Arabic-Indic numerals (§8) | Western digits in the editor | The numeral-style setting is not built yet. |
+| Single gold pulse on approval (§9) | Colour change only | Keeps motion minimal; easy to add. |
+
 ### Not yet checked
 - Long Urdu, short Arabic and mixed titles in FILES and KALAAM (the sample's titles are Latin).
 - Keyboard-only walk-through of every control, and screen-reader output.

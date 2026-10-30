@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api, DocumentIndex, DocumentSummary } from "./api";
+import { api, DocumentIndex, DocumentSummary, Rect, Stanza } from "./api";
 import Catalogue from "./Catalogue";
 import FaultPanel from "./FaultPanel";
 import FilesPanel from "./FilesPanel";
 import { NoorMark } from "./icons";
 import Inspector from "./Inspector";
 import PipelineStrip from "./PipelineStrip";
+import SelectionPanel from "./SelectionPanel";
+import { useStanzas } from "./stanzas";
 import Styleguide from "./Styleguide";
 import { log, setLink, StageId, track, useTelemetry } from "./telemetry";
 import Toasts, { Toast } from "./Toasts";
 import TopBar from "./TopBar";
-import Viewer, { Readout } from "./Viewer";
+import Viewer, { Readout, ViewerNav } from "./Viewer";
 
 interface Opened {
   doc: DocumentSummary;
@@ -43,12 +45,103 @@ export default function App() {
   const [readout, setReadout] = useState<Readout | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [focusedStage, setFocusedStage] = useState<StageId | null>(null);
+  const [drawMode, setDrawMode] = useState(false);
+  const [focus, setFocus] = useState(false);
+  const [clip, setClip] = useState<Rect | null>(null);
+  const [stampMode, setStampMode] = useState(false);
   const toastId = useRef(0);
-  const goRef = useRef<((p: number) => void) | null>(null);
+  const navRef = useRef<ViewerNav | null>(null);
 
-  const notify = useCallback((kind: Toast["kind"], text: string) => {
+  const notify = useCallback((kind: Toast["kind"], text: string, action?: Toast["action"]) => {
     const id = ++toastId.current;
-    setToasts((t) => [...t, { id, kind, text }]);
+    setToasts((t) => [...t, { id, kind, text, action }]);
+  }, []);
+
+  const onStanzaError = useCallback(
+    (msg: string) => {
+      notify("error", msg);
+      setFaultOpen(true);
+    },
+    [notify],
+  );
+  const st = useStanzas(opened?.doc.id ?? null, onStanzaError);
+  const selected = st.stanzas.find((s) => s.id === st.selectedId) ?? null;
+
+  const onSelect = useCallback((id: number | null) => st.setSelectedId(id), [st.setSelectedId]);
+  const onCreate = useCallback((page0: number, rect: Rect) => st.create(page0, rect), [st.create]);
+  const onChangeRect = useCallback((id: number, rect: Rect) => st.update(id, { rect }), [st.update]);
+  // Draw and stamp are mutually exclusive ways of adding boxes.
+  const onToggleDraw = useCallback((on?: boolean) => {
+    setDrawMode((d) => {
+      const next = on ?? !d;
+      if (next) setStampMode(false);
+      return next;
+    });
+  }, []);
+  const onToggleStamp = useCallback((on?: boolean) => {
+    setStampMode((s) => {
+      const next = on ?? !s;
+      if (next) setDrawMode(false);
+      return next;
+    });
+  }, []);
+  const { remove, restore } = st;
+  const onDelete = useCallback(
+    async (id: number) => {
+      const gone = await remove(id);
+      if (gone) notify("info", `Deleted stanza ${gone.number}.`, { label: "UNDO", run: () => restore(gone) });
+    },
+    [remove, restore, notify],
+  );
+  const pickStanza = useCallback(
+    (s: Stanza) => {
+      st.setSelectedId(s.id);
+      navRef.current?.goStanza(s);
+    },
+    [st.setSelectedId],
+  );
+
+  // Reuse a box: its size can be stamped anywhere (S, then click), or Ctrl+V pastes it at the same position.
+  const onCopy = useCallback(
+    (rect: Rect) => {
+      setClip(rect);
+      notify(
+        "info",
+        `Copied ${Math.round(rect[2] - rect[0])} × ${Math.round(rect[3] - rect[1])} pt. Press S and click where the next stanza starts, or Ctrl+V for the same position.`,
+      );
+    },
+    [notify],
+  );
+  const useSize = useCallback(
+    (rect: Rect) => {
+      setClip(rect);
+      onToggleStamp(true);
+      notify("info", `Stamping ${Math.round(rect[2] - rect[0])} × ${Math.round(rect[3] - rect[1])} pt boxes. Click where each stanza starts; Esc stops.`);
+    },
+    [notify, onToggleStamp],
+  );
+  const { create } = st;
+  const sameBoxOnPage = useCallback(
+    (s: Stanza, page0: number) => {
+      if (!opened || page0 < 0 || page0 >= opened.doc.page_count) return;
+      create(page0, s.rect);
+      navRef.current?.goStanza({ ...s, page: page0 });
+    },
+    [opened, create],
+  );
+
+  // Focus = real full screen (when the browser allows it) plus a layout with only the page and toolbar.
+  const toggleFocus = useCallback(() => setFocus((f) => !f), []);
+  useEffect(() => {
+    const el = document.documentElement;
+    if (focus && !document.fullscreenElement) el.requestFullscreen?.().catch(() => {});
+    if (!focus && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+  }, [focus]);
+  useEffect(() => {
+    // Esc in the browser leaves full screen; follow it.
+    const sync = () => !document.fullscreenElement && setFocus(false);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
   const dismiss = useCallback((id: number) => setToasts((t) => t.filter((x) => x.id !== id)), []);
 
@@ -76,6 +169,13 @@ export default function App() {
   useEffect(() => {
     refresh().catch(() => setDocs([]));
   }, [refresh]);
+
+  // When the backend comes back after being down, load the library again.
+  const prevLink = useRef(telemetry.link);
+  useEffect(() => {
+    if (prevLink.current === "down" && telemetry.link === "up") refresh().catch(() => {});
+    prevLink.current = telemetry.link;
+  }, [telemetry.link, refresh]);
 
   const upload = async (file: File) => {
     setImporting(file.name);
@@ -112,6 +212,9 @@ export default function App() {
       if (index.warnings.length) index.warnings.forEach((w) => log("warn", w));
       setReadout(null);
       setCurrentPage(0);
+      setDrawMode(false);
+      setStampMode(false);
+      setClip(null);
       setOpened({ doc, index });
       if (!reused) notify("ok", `Indexed “${doc.title}”.`);
     } catch (e) {
@@ -122,8 +225,8 @@ export default function App() {
     }
   };
 
-  const registerGo = useCallback((go: ((p: number) => void) | null) => {
-    goRef.current = go;
+  const registerNav = useCallback((nav: ViewerNav | null) => {
+    navRef.current = nav;
   }, []);
 
   if (route === "#styleguide") return <Styleguide />;
@@ -131,7 +234,7 @@ export default function App() {
   const latestFault = telemetry.faults[0];
 
   return (
-    <div className="app">
+    <div className={`app${focus && opened ? " is-focus" : ""}`}>
       <TopBar
         docTitle={opened?.doc.title ?? null}
         onOpenFaults={() => setFaultOpen((o) => !o && !!latestFault)}
@@ -155,7 +258,13 @@ export default function App() {
             onImport={upload}
             onOpen={open}
           />
-          <Catalogue outline={opened?.index.outline ?? null} currentPage={currentPage} onGo={(p) => goRef.current?.(p)} />
+          <Catalogue
+            outline={opened?.index.outline ?? null}
+            stanzas={st.stanzas}
+            totalPages={opened?.doc.page_count ?? 0}
+            currentPage={currentPage}
+            onGo={(p) => navRef.current?.goPage(p)}
+          />
         </aside>
 
         <section className="col col-center">
@@ -170,7 +279,22 @@ export default function App() {
               active
               onPageChange={setCurrentPage}
               onReadout={setReadout}
-              registerGo={registerGo}
+              registerNav={registerNav}
+              stanzas={st.stanzas}
+              getStanza={st.getStanza}
+              selectedId={st.selectedId}
+              drawMode={drawMode}
+              onToggleDraw={onToggleDraw}
+              onSelect={onSelect}
+              onCreate={onCreate}
+              onChange={onChangeRect}
+              onDelete={onDelete}
+              focus={focus}
+              onToggleFocus={toggleFocus}
+              clip={clip}
+              onCopy={onCopy}
+              stampMode={stampMode}
+              onToggleStamp={onToggleStamp}
             />
           ) : (
             <section className="panel welcome" aria-label="Welcome">
@@ -193,7 +317,24 @@ export default function App() {
         </section>
 
         <aside className="col col-right" aria-label="Inspector">
-          <Inspector readout={opened ? readout : null} focusedStage={focusedStage} onClearFocus={() => setFocusedStage(null)} />
+          <Inspector
+            selection={
+              <SelectionPanel
+                stanzas={st.stanzas}
+                selected={selected}
+                onPatch={st.update}
+                onDelete={onDelete}
+                onPick={pickStanza}
+                hasDocument={!!opened}
+                pageCount={opened?.doc.page_count ?? 0}
+                onUseSize={useSize}
+                onSameBoxOnPage={sameBoxOnPage}
+              />
+            }
+            readout={opened ? readout : null}
+            focusedStage={focusedStage}
+            onClearFocus={() => setFocusedStage(null)}
+          />
         </aside>
       </main>
 

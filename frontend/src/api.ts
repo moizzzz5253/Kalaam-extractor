@@ -35,6 +35,22 @@ export interface DocumentIndex {
   warnings: string[];
 }
 
+export type Rect = [number, number, number, number]; // x0, y0, x1, y1 in PDF points, top-left origin
+
+export interface Stanza {
+  id: number;
+  document_id: number;
+  page: number; // 0-based
+  rect: Rect;
+  number: number;
+  title: string;
+  verified: boolean;
+  new_page: boolean; // Handy Book: start this stanza on a fresh output page
+  updated_at: string;
+}
+
+export type StanzaPatch = Partial<Pick<Stanza, "rect" | "number" | "title" | "verified" | "new_page">>;
+
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = res.statusText;
@@ -72,4 +88,26 @@ export const api = {
 
   pageImageUrl: (id: number, page0: number, zoom: number) =>
     `/api/documents/${id}/pages/${page0}.png?zoom=${zoom}`,
+
+  listStanzas: (docId: number): Promise<Stanza[]> =>
+    fetch(`/api/documents/${docId}/stanzas`).then((r) => json<Stanza[]>(r)),
+
+  createStanza: (docId: number, body: { page: number; rect: Rect; number?: number; title?: string }): Promise<Stanza> =>
+    fetch(`/api/documents/${docId}/stanzas`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }).then((r) => json<Stanza>(r)),
+
+  updateStanza: (id: number, patch: StanzaPatch): Promise<Stanza> =>
+    fetch(`/api/stanzas/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }).then((r) => json<Stanza>(r)),
+
+  deleteStanza: (id: number): Promise<void> =>
+    fetch(`/api/stanzas/${id}`, { method: "DELETE" }).then(async (r) => {
+      if (!r.ok) await json(r);
+    }),
 };

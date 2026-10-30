@@ -6,7 +6,7 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import DateTime, Integer, String, Text, create_engine, select
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text, create_engine, func, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 
 INDEX_VERSION = 1  # bump when the inspection output schema changes -> forces re-index
@@ -40,6 +40,29 @@ class Document(Base):
     index_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     indexing_status: Mapped[str] = mapped_column(String(20), default="pending")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+
+
+class Stanza(Base):
+    """A hand-drawn box on one source page. Metadata only: the PDF itself is never modified.
+
+    Coordinates are PDF points with a top-left origin on the unrotated page (PyMuPDF's page.rect
+    convention, the same one the index uses for link rectangles).
+    """
+    __tablename__ = "stanzas"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    document_id: Mapped[int] = mapped_column(ForeignKey("documents.id"), index=True)
+    page: Mapped[int] = mapped_column(Integer)  # 0-based physical page
+    x0: Mapped[float] = mapped_column(Float)
+    y0: Mapped[float] = mapped_column(Float)
+    x1: Mapped[float] = mapped_column(Float)
+    y1: Mapped[float] = mapped_column(Float)
+    number: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str] = mapped_column(String(500), default="")
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    new_page: Mapped[bool] = mapped_column(Boolean, default=False)  # Handy Book: start this stanza on a fresh page
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_now, onupdate=_now)
 
 
 _engine = None
@@ -88,3 +111,15 @@ def load_index(doc: Document) -> dict | None:
     if doc.index_json and doc.index_version == INDEX_VERSION:
         return json.loads(doc.index_json)
     return None
+
+
+def list_stanzas(doc_id: int) -> list[Stanza]:
+    with session() as s:
+        q = select(Stanza).where(Stanza.document_id == doc_id).order_by(Stanza.page, Stanza.y0, Stanza.x0)
+        return list(s.execute(q).scalars())
+
+
+def next_stanza_number(doc_id: int) -> int:
+    with session() as s:
+        top = s.execute(select(func.max(Stanza.number)).where(Stanza.document_id == doc_id)).scalar()
+        return (top or 0) + 1

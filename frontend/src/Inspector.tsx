@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { StageId, STAGES, Step, useTelemetry } from "./telemetry";
 import { useTheme } from "./theme";
 import type { Readout } from "./Viewer";
 
 interface Props {
+  selection: ReactNode;
   readout: Readout | null;
   focusedStage: StageId | null;
   onClearFocus: () => void;
@@ -11,22 +12,10 @@ interface Props {
 
 const PT_PER_MM = 72 / 25.4;
 
-export default function Inspector({ readout, focusedStage, onClearFocus }: Props) {
+export default function Inspector({ selection, readout, focusedStage, onClearFocus }: Props) {
   return (
     <>
-      <section className="panel" aria-label="Selection">
-        <h3>
-          <span>SELECTION</span>
-          <em>0 stanzas</em>
-        </h3>
-        <div className="empty-state small">
-          <p className="empty-title">No stanza selected</p>
-          <p>
-            Drawing a box around a stanza arrives in the next milestone. Its coordinates, number and verification
-            will show here.
-          </p>
-        </div>
-      </section>
+      {selection}
       <TechPanel readout={readout} />
       <StepInspector focusedStage={focusedStage} onClearFocus={onClearFocus} />
       <ScopePanel />

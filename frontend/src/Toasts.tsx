@@ -5,6 +5,7 @@ export interface Toast {
   id: number;
   kind: "ok" | "info" | "error";
   text: string;
+  action?: { label: string; run: () => void };
 }
 
 /** Bottom-right notices. Errors stay until dismissed; others leave after 4 s. */
@@ -21,7 +22,7 @@ export default function Toasts({ toasts, onDismiss }: { toasts: Toast[]; onDismi
 function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number) => void }) {
   useEffect(() => {
     if (toast.kind === "error") return;
-    const t = setTimeout(() => onDismiss(toast.id), 4000);
+    const t = setTimeout(() => onDismiss(toast.id), toast.action ? 8000 : 4000); // longer when it offers Undo
     return () => clearTimeout(t);
   }, [toast, onDismiss]);
 
@@ -31,6 +32,17 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: number)
       <p>
         <bdi>{toast.text}</bdi>
       </p>
+      {toast.action && (
+        <button
+          className="btn sm"
+          onClick={() => {
+            toast.action!.run();
+            onDismiss(toast.id);
+          }}
+        >
+          {toast.action.label}
+        </button>
+      )}
       <button className="tbtn" aria-label="Dismiss" onClick={() => onDismiss(toast.id)}>
         <IconClose size={14} />
       </button>

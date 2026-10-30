@@ -2,15 +2,16 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import * as pdfjs from "pdfjs-dist";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
-import { api, DocumentIndex, DocumentSummary } from "./api";
+import { api, DocumentIndex, DocumentSummary, Rect, Stanza } from "./api";
+import BoxLayer, { moveWithin } from "./BoxLayer";
 import { formatBytes } from "./format";
-import { IconChevronLeft, IconChevronRight, IconFitWidth, IconMinus, IconPlus } from "./icons";
+import { IconBox, IconChevronLeft, IconChevronRight, IconFitPage, IconFitWidth, IconFocus, IconMinus, IconPlus, IconStamp } from "./icons";
 import { track } from "./telemetry";
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
 const DEFAULT_SCALE = 1.25;
-const MIN_SCALE = 0.5;
+const MIN_SCALE = 0.25;
 const MAX_SCALE = 3;
 const TOP_CLEARANCE = 16; // px left above a page we jump to
 const THUMB_ZOOM = 0.25; // backend minimum; thumbnails are rendered server-side and cached by the browser
@@ -27,16 +28,65 @@ export interface Readout {
   rotate: number;
 }
 
+export interface ViewerNav {
+  goPage: (page0: number) => void;
+  goStanza: (s: Stanza) => void;
+}
+
 interface Props {
   doc: DocumentSummary;
   index: DocumentIndex;
   active: boolean; // false while hidden: keyboard shortcuts and scroll tracking are off
   onPageChange: (page0: number) => void;
   onReadout: (r: Readout) => void;
-  registerGo: (go: ((page0: number) => void) | null) => void;
+  registerNav: (nav: ViewerNav | null) => void;
+  stanzas: Stanza[]; // sorted in reading order
+  getStanza: (id: number) => Stanza | null; // latest state, including edits not yet rendered
+  selectedId: number | null;
+  drawMode: boolean;
+  onToggleDraw: (on?: boolean) => void;
+  onSelect: (id: number | null) => void;
+  onCreate: (page0: number, rect: Rect) => void;
+  onChange: (id: number, rect: Rect) => void;
+  onDelete: (id: number) => void;
+  focus: boolean; // full-screen page view
+  onToggleFocus: () => void;
+  clip: Rect | null; // copied box: its size is stamped (S), or Ctrl+V pastes it at the same position
+  onCopy: (rect: Rect) => void;
+  stampMode: boolean;
+  onToggleStamp: (on?: boolean) => void;
 }
 
-export default function Viewer({ doc, index, active, onPageChange, onReadout, registerGo }: Props) {
+const NUDGE_PT = 1;
+const NUDGE_BIG_PT = 10;
+
+export default function Viewer({
+  doc,
+  index,
+  active,
+  onPageChange,
+  onReadout,
+  registerNav,
+  stanzas,
+  getStanza,
+  selectedId,
+  drawMode,
+  onToggleDraw,
+  onSelect,
+  onCreate,
+  onChange,
+  onDelete,
+  focus,
+  onToggleFocus,
+  clip,
+  onCopy,
+  stampMode,
+  onToggleStamp,
+}: Props) {
+  const stampSize = useMemo(
+    () => (stampMode && clip ? { w: clip[2] - clip[0], h: clip[3] - clip[1] } : null),
+    [stampMode, clip],
+  );
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [baseSize, setBaseSize] = useState<Size | null>(null); // page 1 at scale 1, for unrendered pages
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +96,8 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const currentRef = useRef(0);
   currentRef.current = currentPage;
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
 
   // Load the document once (timed as an INDEX step); pages are fetched lazily below.
   useEffect(() => {
@@ -100,10 +152,32 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
     [total],
   );
 
+  // Scroll so a stanza's top edge sits just below the top of the desk.
+  const goToStanza = useCallback(
+    (s: Stanza) => {
+      const el = pageRefs.current.get(s.page);
+      if (el && deskRef.current) {
+        deskRef.current.scrollTop = el.offsetTop + s.rect[1] * scaleRef.current - 48;
+        setCurrentPage(s.page);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
-    registerGo(goToPage);
-    return () => registerGo(null);
-  }, [goToPage, registerGo]);
+    registerNav({ goPage: goToPage, goStanza: goToStanza });
+    return () => registerNav(null);
+  }, [goToPage, goToStanza, registerNav]);
+
+  const stanzasByPage = useMemo(() => {
+    const m = new Map<number, Stanza[]>();
+    for (const s of stanzas) {
+      const arr = m.get(s.page) ?? [];
+      arr.push(s);
+      m.set(s.page, arr);
+    }
+    return m;
+  }, [stanzas]);
 
   useEffect(() => onPageChange(currentPage), [currentPage, onPageChange]);
 
@@ -138,15 +212,80 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
     const avail = deskRef.current.clientWidth - 2 * 24;
     setScale(clampScale(Math.floor((avail / baseSize.w) * 100) / 100));
   };
+  // Whole page visible at once: limited by width or height, whichever is tighter.
+  const fitPage = useCallback(() => {
+    if (!deskRef.current || !baseSize) return;
+    const w = deskRef.current.clientWidth - 2 * 24;
+    const h = deskRef.current.clientHeight - 2 * TOP_CLEARANCE;
+    setScale(clampScale(Math.floor(Math.min(w / baseSize.w, h / baseSize.h) * 100) / 100));
+  }, [baseSize]);
 
-  // Keyboard: ←/→ page, +/− zoom, Home/End. Ignored while typing in a field.
+  // Entering focus fits the whole page; leaving it restores the zoom you had before.
+  const scaleBeforeFocus = useRef<number | null>(null);
+  useEffect(() => {
+    if (!baseSize) return;
+    if (focus) {
+      scaleBeforeFocus.current ??= scaleRef.current;
+      const t = setTimeout(fitPage, 150); // let the full-screen layout settle first
+      return () => clearTimeout(t);
+    }
+    if (scaleBeforeFocus.current !== null) {
+      setScale(scaleBeforeFocus.current);
+      scaleBeforeFocus.current = null;
+    }
+  }, [focus, baseSize, fitPage]);
+
+  // Keyboard. With a box selected: arrows nudge 1 pt (Shift 10 pt), Alt+arrows resize, Delete removes.
+  // Otherwise: ←/→ page, Home/End. Always: B draw, Esc, [ ] previous/next stanza, +/− zoom.
+  // Ignored while typing in a field.
   useEffect(() => {
     if (!active) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target;
       if (t instanceof Element && t.closest("input, textarea, select, [contenteditable]")) return;
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-      if (e.key === "ArrowRight") goToPage(currentRef.current + 1);
+      const sel = selectedId !== null ? getStanza(selectedId) : null;
+      if (e.ctrlKey || e.metaKey) {
+        // Ctrl+C copies the selected box; Ctrl+V pastes it at the same coordinates on the page in view.
+        const k = e.key.toLowerCase();
+        if (k === "c" && sel) onCopy(sel.rect);
+        else if (k === "v" && clip) onCreate(currentRef.current, clip);
+        else return;
+        e.preventDefault();
+        return;
+      }
+      const arrow = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key] as
+        | [number, number]
+        | undefined;
+
+      if (sel && arrow) {
+        const step = e.shiftKey ? NUDGE_BIG_PT : NUDGE_PT;
+        const page = baseSize ?? { w: 595, h: 842 };
+        const [dx, dy] = arrow;
+        const r = sel.rect;
+        const next: Rect = e.altKey
+          ? [r[0], r[1], Math.max(r[0] + 4, Math.min(page.w, r[2] + dx * step)), Math.max(r[1] + 4, Math.min(page.h, r[3] + dy * step))]
+          : moveWithin(r, dx * step, dy * step, page);
+        onChange(sel.id, next);
+      } else if (e.altKey) {
+        return;
+      } else if (sel && (e.key === "Delete" || e.key === "Backspace")) onDelete(sel.id);
+      else if (e.key === "b" || e.key === "B") onToggleDraw();
+      else if ((e.key === "s" || e.key === "S") && clip) onToggleStamp();
+      else if (e.key === "f" || e.key === "F") onToggleFocus();
+      else if (e.key === "Escape") {
+        if (stampMode) onToggleStamp(false);
+        else if (drawMode) onToggleDraw(false);
+        else onSelect(null);
+      } else if (e.key === "[" || e.key === "]") {
+        if (stanzas.length === 0) return;
+        const i = sel ? stanzas.findIndex((s) => s.id === sel.id) : -1;
+        const next =
+          e.key === "]"
+            ? stanzas[Math.min(stanzas.length - 1, i + 1)]
+            : stanzas[i <= 0 ? 0 : i - 1];
+        onSelect(next.id);
+        goToStanza(next);
+      } else if (e.key === "ArrowRight") goToPage(currentRef.current + 1);
       else if (e.key === "ArrowLeft") goToPage(currentRef.current - 1);
       else if (e.key === "Home") goToPage(0);
       else if (e.key === "End") goToPage(total - 1);
@@ -157,7 +296,9 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [active, goToPage, total]);
+  }, [active, goToPage, goToStanza, total, stanzas, getStanza, selectedId, drawMode, baseSize, onChange, onDelete, onToggleDraw, onSelect, onToggleFocus, clip, onCopy, onCreate, stampMode, onToggleStamp]);
+
+  const selected = selectedId !== null ? stanzas.find((s) => s.id === selectedId) ?? null : null;
 
   const onScroll = () => {
     // While hidden every offset reads 0, which would jump to the last page.
@@ -203,9 +344,62 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
         <button className="tbtn" aria-label="Fit to width" data-tip="Fit to width" onClick={fitWidth} disabled={!pdf}>
           <IconFitWidth />
         </button>
+        <button className="tbtn" aria-label="Fit whole page" data-tip="Fit whole page" onClick={fitPage} disabled={!pdf}>
+          <IconFitPage />
+        </button>
+        <button
+          className={`tbtn tbtn-label${focus ? " on" : ""}`}
+          aria-pressed={focus}
+          data-tip={focus ? "Leave full screen · F" : "Full-screen page · F"}
+          onClick={onToggleFocus}
+          disabled={!pdf}
+        >
+          <IconFocus /> <span>{focus ? "EXIT FOCUS" : "FOCUS"}</span>
+        </button>
+        <span className="tsep" />
+        <button
+          className={`tbtn tbtn-label${drawMode ? " on" : ""}`}
+          aria-pressed={drawMode}
+          data-tip={drawMode ? "Stop drawing · B or Esc" : "Draw a stanza box · B"}
+          onClick={() => onToggleDraw()}
+          disabled={!pdf}
+        >
+          <IconBox /> <span>{drawMode ? "DRAWING" : "DRAW BOX"}</span>
+        </button>
+        <button
+          className={`tbtn tbtn-label${stampMode ? " on" : ""}`}
+          aria-pressed={stampMode}
+          data-tip={
+            !clip
+              ? "Copy a box size first (Ctrl+C or 'use this size')"
+              : stampMode
+                ? "Stop stamping · S or Esc"
+                : `Stamp a ${Math.round(clip[2] - clip[0])} × ${Math.round(clip[3] - clip[1])} pt box · S`
+          }
+          onClick={() => onToggleStamp()}
+          disabled={!pdf || !clip}
+        >
+          <IconStamp /> <span>{stampMode ? "STAMPING" : "STAMP"}</span>
+        </button>
+        <span className="toolbar-meta">
+          {selected
+            ? `stanza ${selected.number || "…"} · ${Math.round(selected.rect[2] - selected.rect[0])} × ${Math.round(selected.rect[3] - selected.rect[1])} pt · `
+            : ""}
+          {clip && !stampMode ? `size ${Math.round(clip[2] - clip[0])} × ${Math.round(clip[3] - clip[1])} pt copied · S stamps · ` : ""}
+          {stampMode ? "click where a stanza starts · " : ""}
+          {stanzasByPage.get(currentPage)?.length ?? 0} on this page · {stanzas.length} total
+        </span>
       </div>
 
-      <div className="desk" ref={deskRef} onScroll={onScroll} aria-label={`Pages of ${doc.title}`}>
+      <div
+        className={`desk${drawMode || stampMode ? " is-drawing" : ""}`}
+        ref={deskRef}
+        onScroll={onScroll}
+        aria-label={`Pages of ${doc.title}`}
+        onPointerDown={(e) => {
+          if (!drawMode && !stampMode && !(e.target as Element).closest(".bbox")) onSelect(null);
+        }}
+      >
         {error ? (
           <div className="desk-message">
             <b>PDF COULD NOT BE OPENED</b>
@@ -229,6 +423,13 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
               links={linksByPage.get(p) ?? []}
               onInternalLink={goToPage}
               registerRef={registerRef}
+              stanzas={stanzasByPage.get(p) ?? NONE}
+              selectedId={selectedId}
+              drawMode={drawMode}
+              stampSize={stampSize}
+              onSelect={onSelect}
+              onCreate={onCreate}
+              onChange={onChange}
             />
           ))
         )}
@@ -238,6 +439,8 @@ export default function Viewer({ doc, index, active, onPageChange, onReadout, re
     </section>
   );
 }
+
+const NONE: Stanza[] = [];
 
 function clampScale(s: number) {
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, s));
@@ -321,6 +524,13 @@ interface LazyPageProps {
   links: DocumentIndex["links"];
   onInternalLink: (p: number) => void;
   registerRef: (p: number, el: HTMLDivElement | null) => void;
+  stanzas: Stanza[];
+  selectedId: number | null;
+  drawMode: boolean;
+  stampSize: { w: number; h: number } | null;
+  onSelect: (id: number) => void;
+  onCreate: (page0: number, rect: Rect) => void;
+  onChange: (id: number, rect: Rect) => void;
 }
 
 /**
@@ -337,6 +547,13 @@ const LazyPage = memo(function LazyPage({
   links,
   onInternalLink,
   registerRef,
+  stanzas,
+  selectedId,
+  drawMode,
+  stampSize,
+  onSelect,
+  onCreate,
+  onChange,
 }: LazyPageProps) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -412,6 +629,20 @@ const LazyPage = memo(function LazyPage({
             onClick={() => onInternalLink(l.target_page!)}
           />
         ))}
+      {visible && (
+        <BoxLayer
+          page0={pageIndex}
+          size={size}
+          scale={scale}
+          stanzas={stanzas}
+          selectedId={selectedId}
+          drawMode={drawMode}
+          stampSize={stampSize}
+          onSelect={onSelect}
+          onCreate={onCreate}
+          onChange={onChange}
+        />
+      )}
     </div>
   );
 });

@@ -56,6 +56,34 @@ export const IconClose = (p: IconProps) => (
     <path d="m5 5 10 10M15 5 5 15" />
   </Svg>
 );
+export const IconFitPage = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="5.5" y="3" width="9" height="14" />
+    <path d="M10 1v3M10 16v3" />
+  </Svg>
+);
+export const IconFocus = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4" />
+  </Svg>
+);
+export const IconBox = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M3 6V3h3M14 3h3v3M17 14v3h-3M6 17H3v-3" />
+    <path d="M7 8h6M7 12h6" />
+  </Svg>
+);
+export const IconStamp = (p: IconProps) => (
+  <Svg {...p}>
+    <rect x="3" y="10" width="14" height="4" />
+    <path d="M5 17h10M8 10V7h4v3M10 7V3" />
+  </Svg>
+);
+export const IconTrash = (p: IconProps) => (
+  <Svg {...p}>
+    <path d="M4 6h12M8 6V4h4v2M6 6l1 10.5h6L14 6" />
+  </Svg>
+);
 export const IconCopy = (p: IconProps) => (
   <Svg {...p}>
     <rect x="7" y="7" width="9.5" height="9.5" />

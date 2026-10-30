@@ -10,7 +10,7 @@ export type StageState = "idle" | "active" | "done" | "error";
 export const STAGES: { id: StageId; name: string; built: boolean }[] = [
   { id: "input", name: "INPUT", built: true },
   { id: "index", name: "INDEX", built: true },
-  { id: "select", name: "SELECT", built: false },
+  { id: "select", name: "SELECT", built: true },
   { id: "compose", name: "COMPOSE", built: false },
   { id: "export", name: "EXPORT", built: false },
 ];

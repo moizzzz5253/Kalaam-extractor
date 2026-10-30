@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
-import { OutlineItem } from "./api";
+import { OutlineItem, Stanza } from "./api";
 import { IconSearch } from "./icons";
 
 interface Props {
   outline: OutlineItem[] | null; // null: no document open
+  stanzas: Stanza[];
+  totalPages: number;
   currentPage: number;
   onGo: (page0: number) => void;
 }
 
-/** Kalaam catalogue. For now it lists the PDF's bookmarks; stanza counts arrive with selection. */
-export default function Catalogue({ outline, currentPage, onGo }: Props) {
+/** Kalaam catalogue: the PDF's bookmarks, each with the number of stanzas selected in its page range. */
+export default function Catalogue({ outline, stanzas, totalPages, currentPage, onGo }: Props) {
   const [draft, setDraft] = useState("");
   const [query, setQuery] = useState("");
   useEffect(() => {
@@ -22,6 +24,17 @@ export default function Catalogue({ outline, currentPage, onGo }: Props) {
     () => (query ? items.filter((o) => o.title.toLowerCase().includes(query)) : items),
     [items, query],
   );
+  // A bookmark covers its start page up to the next bookmark that starts later.
+  const counts = useMemo(() => {
+    const starts = [...new Set(items.map((o) => o.target_page).filter((p): p is number => p !== null))].sort((a, b) => a - b);
+    return items.map((o) => {
+      if (o.target_page === null) return null;
+      const end = starts.find((p) => p > o.target_page!) ?? totalPages;
+      const inRange = stanzas.filter((s) => s.page >= o.target_page! && s.page < end);
+      return { total: inRange.length, verified: inRange.filter((s) => s.verified).length };
+    });
+  }, [items, stanzas, totalPages]);
+
   // Bookmark whose start page is the latest one at or before the current page.
   const activeIdx = useMemo(() => {
     let best = -1;
@@ -75,6 +88,14 @@ export default function Catalogue({ outline, currentPage, onGo }: Props) {
                       <span className="k-title" dir="auto">
                         {o.title}
                       </span>
+                      {counts[i] && counts[i]!.total > 0 && (
+                        <span
+                          className={`k-count${counts[i]!.verified === counts[i]!.total ? " all-ok" : ""}`}
+                          title={`${counts[i]!.total} stanzas, ${counts[i]!.verified} verified`}
+                        >
+                          {counts[i]!.verified}/{counts[i]!.total}
+                        </span>
+                      )}
                       <span className="k-page">{o.target_page === null ? "—" : `p ${o.target_page + 1}`}</span>
                     </button>
                   </li>
