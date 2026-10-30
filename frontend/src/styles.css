@@ -1,0 +1,31 @@
+:root { font-family: system-ui, sans-serif; color: #1d1d1f; background: #f5f5f7; }
+body { margin: 0; }
+button { cursor: pointer; font: inherit; padding: 4px 10px; border: 1px solid #c7c7cc; border-radius: 6px; background: #fff; }
+button:disabled { opacity: 0.5; cursor: default; }
+.muted { color: #8e8e93; }
+.status { color: #3a3a3c; }
+.warnings p { color: #b25000; font-size: 13px; }
+.error { color: #c00; padding: 24px; }
+.panel { padding: 24px; }
+
+.library { max-width: 980px; margin: 0 auto; padding: 24px; }
+.library header { display: flex; justify-content: space-between; align-items: center; }
+.library table { width: 100%; border-collapse: collapse; background: #fff; margin-top: 16px; }
+.library th, .library td { text-align: left; padding: 10px; border-bottom: 1px solid #e5e5ea; }
+.upload { background: #0a64d8; color: #fff; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+
+.viewer { display: flex; height: 100vh; }
+.sidebar { width: 280px; min-width: 280px; border-right: 1px solid #e5e5ea; background: #fff; padding: 12px; overflow-y: auto; }
+.sidebar h2 { font-size: 16px; margin: 12px 0; word-break: break-word; }
+.sidebar h3 { font-size: 14px; margin-top: 16px; }
+.pagenav, .zoom { display: flex; align-items: center; gap: 6px; margin: 8px 0; }
+.pagenav input { width: 60px; text-align: center; }
+.outline { list-style: none; padding: 0; margin: 0; }
+.outline li { margin: 2px 0; }
+button.link { border: none; background: none; padding: 2px 0; text-align: left; color: #0a64d8; }
+.pages { flex: 1; overflow-y: auto; background: #d9d9de; padding: 16px; text-align: center; }
+.page { position: relative; margin: 0 auto 16px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+.page canvas { display: block; }
+.placeholder { height: 100%; display: flex; align-items: center; justify-content: center; color: #aeaeb2; }
+.linkhit { position: absolute; border: 1px dashed transparent; background: transparent; padding: 0; border-radius: 0; }
+.linkhit:hover { border-color: #0a64d8; background: rgba(10,100,216,.08); }
