@@ -1,312 +1,364 @@
-# Frontend Design Instructions: Kalaam & Stanza PDF Studio
+# Frontend Design Instructions: Kalaam & Stanza PDF Extractor — "Noor Scope"
 
 Give this file to Claude Code before it builds any UI. Read it fully before writing components. These instructions override any default styling, template, or component-library look.
 
----
-
-## 1. Goal
-
-Build a **premium, editorial document-production studio**, not a generic admin dashboard and not a plain HTML page. The user works with religious and literary texts in Urdu, Arabic, and Lisan ud Daawat. The interface should feel calm, dignified, precise, and crafted, like a well-designed rare-book atelier crossed with a professional design tool such as Figma or Lightroom.
-
-The app should feel:
-
-- **Warm and literary**, with paper-like surfaces and considered typography.
-- **Precise and technical**, because it handles coordinates, bounding boxes, and PDF layout.
-- **Quietly luxurious**, with restraint, generous spacing, and fine detail.
-- **Respectful of the content.** The source PDF pages are the stars. The chrome should recede around them.
-
-The app should not feel:
-
-- Like a default Bootstrap, Material, or stock shadcn/ui template left unstyled.
-- Like a SaaS landing page with gradients, glowing blobs, or purple-to-blue hero sections.
-- Cluttered, noisy, or full of competing colors.
-- Childish, or like a cartoon Islamic-themed kitsch design with ornate clip-art.
+This brief reuses the **design concept of PDF//SCOPE** (the owner's PDF workbench, repo `moizzzz5253/pdf-editor`): a phosphor oscilloscope look, a signal-flow pipeline, glowing status LEDs, clipped-corner panels, live step inspector, and a theme system with presets. It is re-skinned for a devotional Kalaam collection in an Islamic and Dawoodi Bohra sensibility, and it is built for a mechatronic engineer who wants to see how the software works.
 
 ---
 
-## 2. Aesthetic Direction
+## 1. Goal and Identity
 
-Name the direction **"Manuscript Atelier."** Apply it consistently.
+Build a **signal-flow workbench for devotional texts**. The user imports a large PDF of Kalaam, selects stanzas with bounding boxes, and composes a Handy Book. Every step of that process is visible as a live signal, so the user can see what the software is doing.
 
-- **Surfaces:** Warm off-white "parchment" in light mode, and deep ink-charcoal (not pure black) in dark mode. Avoid pure #FFFFFF and pure #000000 anywhere.
-- **Structure:** Thin hairline dividers, subtle inner borders, soft layered shadows only on floating elements such as popovers and the drag ghost. Cards should look like cut paper, with 1px borders and very light shadows.
-- **Accent:** A single muted **antique gold** accent for primary actions, selection, and focus. Use it sparingly, as a jewel rather than a paint bucket.
-- **Secondary accent:** A deep **teal or emerald** for success and "verified" states only.
-- **Warning and error:** Muted terracotta and a deep oxblood. Never neon red or bright orange.
-- **Ornament:** Minimal. At most one subtle geometric or arabesque motif, used only in empty states, the app logo, and the export cover preview. Never on working surfaces.
+The name for the app is **Noor Scope** (*noor* means light, which fits the phosphor-glow concept). Change the name only if the owner asks.
+
+The app must feel:
+
+- **Calm and devotional.** Restrained, dignified, unhurried. Geometry and light, not ornament.
+- **Technical and honest.** Every value has a unit, every step has a timing, every fault has a readable report.
+- **Fast.** Animation is a signal, never a delay. The user is never made to wait for an effect to finish.
+
+The app must not feel:
+
+- Like a neon gaming HUD, sci-fi cockpit, or "cyberpunk" poster. Glow is used as information, not as decoration.
+- Like a cartoon or clip-art Islamic design. Ornament is geometric, faint, and kept away from working surfaces.
+- Like a stock admin template with a green colour swapped in.
 
 ---
 
-## 3. Design Tokens (implement as CSS variables)
+## 2. Design Concept: "Phosphor Manuscript"
 
-Define all colors, radii, spacing, and type scales as tokens in one place, such as `src/styles/tokens.css`. Components must use tokens, never hardcoded hex values.
+Four principles govern every decision:
+
+1. **Show the signal.** The pipeline (INPUT → INDEX → SELECT → COMPOSE → EXPORT) is always visible. A user should be able to glance at it and know what is happening.
+2. **Glow means state.** A glowing LED, edge, or wire means something is active, healthy, or selected. A glow that carries no meaning is removed.
+3. **Sacred restraint.** Islamic geometric patterns appear only in the background field, the empty states, and the export cover preview. They never sit behind text, PDF pages, or bounding boxes.
+4. **Engineer's transparency.** Numbers, coordinates, timings, and step logs are always one click away. Nothing is hidden behind "magic".
+
+---
+
+## 3. Cultural and Religious Respect (mandatory)
+
+- **Do not depict any person, living or deceased, in any form.** No portraits, silhouettes, avatars, or photographs of religious figures. No images of any named religious leader, in the UI, copy, placeholder data, screenshots, or the README.
+- **Do not use any logo, emblem, or branding of any organisation.** Use only the Noor Scope mark, which is a geometric eight-point star drawn in SVG. If the owner later wants a custom mark, they will supply it.
+- **Use respectful language.** Say "Kalaam", "stanza", and "Handy Book". Do not describe the content as "poems", "songs", or "entertainment".
+- **Quranic or devotional text** may appear only where the owner supplies it, and always with the owner's own wording. Claude must not invent or translate devotional phrases.
+- **Placeholder content** (sample titles and stanza text) must be generic, such as "Kalaam A — Sample Title", so no real composition text appears in screenshots.
+- **Colours**: emerald and gold are used because they feel devotional and well-crafted. Do not use bright red, gambling-style gold, or alcohol-themed amber tones.
+
+---
+
+## 4. Design Tokens (CSS variables, same mechanism as PDF//SCOPE)
+
+All colours live in CSS variables set on `:root`. Components reference `var(--name)` and never hardcode hex values. The variable names match PDF//SCOPE exactly, so the theme mechanism can be reused.
+
+### Default preset: "Noor Night" (dark)
 
 ```css
 :root {
-  /* Surfaces: light */
-  --surface-0: #F7F3EA;   /* app background, parchment */
-  --surface-1: #FBF8F1;   /* cards, panels */
-  --surface-2: #F0EADB;   /* inset wells, toolbars */
-  --surface-3: #E6DCC7;   /* pressed / active */
-  --ink-900:   #1E1B16;   /* primary text */
-  --ink-700:   #4A443A;   /* secondary text */
-  --ink-500:   #7A7263;   /* tertiary, placeholders */
-  --hairline:  #D9CFBA;   /* dividers, borders */
-
-  /* Accents */
-  --gold-600: #A8822E;    /* primary action */
-  --gold-400: #C9A55A;    /* hover, focus ring */
-  --gold-100: #F3EAD3;    /* selected row background */
-  --teal-600: #1F6F66;    /* verified, success */
-  --teal-100: #DCEEEB;
-  --terracotta-600: #B2573A;  /* warning */
-  --oxblood-600: #7E2B2B;     /* error, destructive */
-
-  /* Bounding-box overlay (see section 7) */
-  --box-idle:     rgba(168, 130, 46, 0.55);
-  --box-hover:    rgba(168, 130, 46, 0.85);
-  --box-selected: #A8822E;
-  --box-fill:     rgba(201, 165, 90, 0.12);
-  --box-suggest:  #1F6F66;    /* AI-suggested, not yet approved */
-}
-
-[data-theme="dark"], :root:not([data-theme="light"]) {
-  /* Override in dark mode, same token names */
-  --surface-0: #17151F;
-  --surface-1: #1F1C27;
-  --surface-2: #27232F;
-  --surface-3: #332E3D;
-  --ink-900:   #F2EDE2;
-  --ink-700:   #C9C1AF;
-  --ink-500:   #8F8775;
-  --hairline:  #3A3445;
-  --gold-600:  #D2B06A;
-  --gold-400:  #E3C98E;
-  --gold-100:  #3A3122;
+  --bg:     #040f0c;   /* page background, deep emerald-black */
+  --top:    #061511;   /* top bar */
+  --panel:  #0a1b16;   /* panels */
+  --panel2: #0d221c;   /* inset rows, cards */
+  --line:   #173a31;   /* hairlines */
+  --line2:  #22584a;   /* borders, focus frames */
+  --phos:   #3ee6a8;   /* primary signal glow: OK, healthy, selected-ok */
+  --amber:  #e0b35a;   /* gold: active, selection, "working now" */
+  --cyan:   #7fd6e8;   /* information, suggestions, links */
+  --red:    #e0606a;   /* fault, destructive (muted, never neon) */
+  --violet: #b9a3e3;   /* secondary data series only */
+  --text:   #efe8d4;   /* ivory text */
+  --dim:    #8fa79c;   /* secondary text, meta */
+  --mono: "JetBrains Mono", ui-monospace, Consolas, Menlo, monospace;
+  --arabic: "Amiri", "Noto Naskh Arabic", serif;
 }
 ```
 
-**Radii:** 6px for inputs and buttons, 10px for cards, 14px for large panels and modals. Never mix in random values.
+### Preset: "Ivory Manuscript" (light)
 
-**Spacing:** Use a 4px base scale (4, 8, 12, 16, 24, 32, 48). Do not use arbitrary pixel values.
+```css
+--bg:#f6f1e4; --top:#ece5d2; --panel:#fffdf6; --panel2:#f7f2e3;
+--line:#d8cdb0; --line2:#b9aa86; --phos:#0f7a58; --amber:#9a6b12;
+--cyan:#1d6f8a; --red:#b03a3a; --violet:#6b4fa0; --text:#1f2a24; --dim:#5f6b62;
+```
 
-**Elevation:** Three levels only. Flat (no shadow), raised (1px border plus a faint shadow), floating (a stronger shadow for popovers and modals).
+### Preset: "Emerald Court" (deeper green)
 
----
+```css
+--bg:#02100b; --top:#04170f; --panel:#08200f; --panel2:#0b2a16;
+--line:#1b4a2c; --line2:#2b6b40; --phos:#7cf0a0; --amber:#e8c770;
+--cyan:#9ee8d0; --red:#e87070; --violet:#c3b0f0; --text:#eef5e6; --dim:#90ab92;
+```
 
-## 4. Typography
+### Preset: "Gold Dusk" (warm dark)
 
-Typography carries much of the identity. Get it right.
+```css
+--bg:#110c06; --top:#180f08; --panel:#201509; --panel2:#2a1c0c;
+--line:#4a3418; --line2:#6e4f22; --phos:#f0c96a; --amber:#ffdf8a;
+--cyan:#e8b07a; --red:#e86a5a; --violet:#d0a8e0; --text:#f7ecd6; --dim:#b09a74;
+```
 
-**Latin / UI:** Use a refined, highly legible sans-serif for the interface, such as **Geist**, **Inter**, or **IBM Plex Sans**. Choose one and stick with it.
+**Presets** are switched from a THEME panel in the top bar (same as PDF//SCOPE): four preset buttons with colour swatches, plus an accent colour picker and a background colour picker. The choice is saved in `localStorage`. The **Reset** button returns to Noor Night.
 
-**Display / headings:** Use an elegant serif for page titles, Kalaam titles in the catalogue, and the export cover. Good choices are **Fraunces**, **Newsreader**, or **Cormorant Garamond**. Use it for H1 and H2 only.
+**Contrast:** every text colour must pass WCAG AA (4.5:1) on its panel in every preset. Check `--dim` on `--panel2` carefully, because it is the weakest pair.
 
-**Arabic script:** Load these Google Fonts and apply them through `:lang(ar)`, `:lang(ur)`, and a `.font-arabic` utility class:
+**Radii:** 0px on panels and inputs, matching PDF//SCOPE's sharp technical edges. Use 2px only on LEDs and pills.
 
-- **Amiri** or **Noto Naskh Arabic** for Arabic body and headings.
-- **Noto Nastaliq Urdu** for Urdu verse display, because Nastaliq is the traditional Urdu script. Use it for stanza previews and titles, not for dense UI labels, since its line height is large.
-- **Scheherazade New** as a fallback for diacritics-heavy text.
-
-Users may also upload their own font. **Al Kanz** is commonly used for Lisan ud Daawat. Support runtime font registration through `@font-face`, but never hardcode it as the only option.
-
-**Type scale** (base 15px for UI, which suits dense tooling):
-
-| Role | Size / line height | Notes |
-|---|---|---|
-| Display | 40 / 1.1 | Serif, cover and empty states |
-| H1 | 28 / 1.2 | Serif |
-| H2 | 20 / 1.3 | Serif |
-| H3 | 16 / 1.4 | Sans, medium weight |
-| Body | 15 / 1.55 | Sans |
-| Small / meta | 12.5 / 1.45 | Sans, `--ink-500`, uppercase tracking for labels only |
-| Arabic verse preview | 22 / 2.0 | Nastaliq or Naskh, generous line height |
-
-**Rules:**
-
-- Never use all-caps for long text.
-- Use `font-variant-numeric: tabular-nums` for page numbers, coordinates, counts, and sizes so they align.
-- Coordinates and technical values (x, y, width, height in points) use a **monospace** font, such as JetBrains Mono or IBM Plex Mono, at 12px.
-- Use `text-wrap: balance` for headings and `text-wrap: pretty` for body paragraphs.
+**Spacing:** a 4px scale (4, 8, 12, 16, 24, 32). No arbitrary values.
 
 ---
 
-## 5. Bidirectional Text and Internationalization
+## 5. Typography
 
-Do not force the entire application into RTL. The chrome stays left-to-right.
+- **Interface, data, coordinates, logs:** JetBrains Mono, 13px base, line height 1.45. Use `font-variant-numeric: tabular-nums` for all numbers.
+- **Display headings and the empty-state titles:** Amiri (SIL OFL, free to use). Use it for H1 and the cover preview only.
+- **Arabic labels in the UI** (buttons, chips, stanza pills): Noto Naskh Arabic, wrapped in `<bdi lang="ar" dir="rtl">`.
+- **Urdu verse previews only:** Noto Nastaliq Urdu, large line height (2.0+). Never in dense UI labels.
+- **Diacritics-heavy text:** Scheherazade New as the fallback.
+- **Arabic-Indic numerals (١٢٣)** are the default for page numbers in the output, as the project brief specifies. Western digits are the default in the app chrome. Numeral style is a separate setting.
+- **Al Kanz** is not confirmed as available. Support registering a user-uploaded font through `@font-face`, but never make it the only option.
 
-- Wrap every Arabic, Urdu, or Lisan ud Daawat string in an element with `dir="rtl"` and the correct `lang` attribute, or use a `<bdi>` where needed.
-- Titles and text in Arabic script should right-align within their own cells or cards, not across the whole layout.
-- Numeric stanza and page numbering follows a **separate setting**: Western digits (1, 2, 3), Arabic-Indic (١، ٢، ٣), or Eastern Arabic / Persian (۱، ۲، ۳). Render them with the chosen numeral system using a formatter, not by string replacement.
-- Mirror icons only where direction carries meaning, such as a "next" arrow inside an Arabic reading context. Do not mirror the entire UI.
-- Test every major screen with a long Urdu title, a short Arabic title, and a mixed Latin-and-Arabic title to confirm that line breaks, alignment, and ellipsis behave correctly.
+Panel headers use the PDF//SCOPE pattern: uppercase, 11px, letter-spacing 0.18em, `--phos` colour, on a faint gradient bar. Uppercase is allowed only for these short labels, never for long text.
 
 ---
 
-## 6. Layout and Information Architecture
+## 6. Layout
 
-### App shell
+### Top bar (46px)
 
-- **Left rail (56–64px, icon-only, expands on hover):** Dashboard, Library, Kalaam, Viewer, Stanzas, Handy Book Studio, Settings. Use a thin gold indicator bar for the active item, not a filled background block.
-- **Top bar (48px):** Breadcrumb or document title on the left, a central search field (⌘K or Ctrl+K opens a command palette), and an indexing or export status indicator on the right.
-- **Content area:** Uses the full remaining space. No wasted outer padding.
+- Left: the Noor Scope mark (eight-point star, SVG) and the wordmark `NOOR//SCOPE`, with the subtitle "signal-flow Kalaam workbench".
+- Right: status chips with LEDs for **LINK** (backend up), the **active document** name, **THEME**, **STOP SERVER**, and **FAULTS n** (blinks when a fault is open).
 
-### Split-view for the Stanza Editor (the most important screen)
+### Pipeline strip (under the top bar, 56px)
 
-Three columns, resizable with a drag handle:
+Five nodes joined by wires: **INPUT → INDEX → SELECT → COMPOSE → EXPORT**. This is the signature element of the app.
 
-- **Left (240–320px):** Kalaam navigator. A tree or list of Kalaam with search, stanza counts, and verification badges.
-- **Center (flexible, dominant):** PDF canvas with the bounding-box overlay. Background is a slightly darker surface (`--surface-2`) so the white page reads as paper on a desk. Add a subtle inner shadow to the page.
-- **Right (280–340px):** Inspector. Shows the selected box's coordinates, stanza number, title, verification state, and detection confidence. Below it sits the "Selected stanzas" list.
+- Each node shows a name, a small LED, and the last step's timing in milliseconds.
+- Node states: idle (dim), active (gold, blinking LED), done (emerald), error (red, shakes once).
+- Wires show a moving pulse while data flows between nodes.
+- Clicking a node opens the Step Inspector for that stage.
 
-Add a **bottom filmstrip** (80px tall) of page thumbnails for fast navigation. Thumbnails are lazily loaded.
+### Main grid (same proportions as PDF//SCOPE)
 
-### Stanza Library
+`grid-template-columns: 268px minmax(0,1fr) 372px`, gap 12px, padding 12px.
 
-A **masonry or grid of cards**. Each card shows a cropped preview of the stanza, the Kalaam name, the source document, and the verification state. Hovering shows a larger preview tooltip. Include a toggle between grid and compact list.
+- **Left column — Library and Catalogue**
+  - FILES panel: drop zone, document list with status and page counts.
+  - KALAAM panel: searchable catalogue, grouped by document, with stanza counts and verification state. Virtualised for thousands of entries.
+- **Centre column — Viewer and Stanza Editor** (dominant)
+  - Source PDF page on a darker field, so the white page reads as paper on a desk.
+  - Bounding-box overlay (section 8).
+  - Page filmstrip along the bottom, thumbnails loaded lazily.
+  - A thin **ruler** along the top and left edges, marked in PDF points, so the user can see coordinates.
+- **Right column — Inspector**
+  - Selected box: coordinates in PDF points, stanza number, title, verification, detection confidence.
+  - SELECTED STANZAS list and the HANDY BOOK queue.
+  - Technical readout: MediaBox, CropBox, rotation, device pixel ratio, zoom.
+  - Step Inspector (the real backend steps with timings), a small **SCOPE** trace of indexing throughput (pages per second), and the Backend Log.
 
 ### Handy Book Studio
 
-A **storyboard model**:
+Same grid as the rest of the app, but the centre column becomes a **page-spread canvas** showing the A4 or A5 sheet with clear margins and safe-area guides. Guides appear only while dragging. A **page strip** along the bottom shows every page of the book as a thumbnail that can be reordered.
 
-- **Left:** The ordered content list, grouped by Kalaam, with drag handles on the left edge and collapsible groups.
-- **Center:** A **page-spread canvas** showing the A4 or A5 page as a physical sheet. Stanzas are placed as scaled previews with clear margins and safe-area guides, shown as faint dashed lines that appear only while dragging.
-- **Right:** Layout controls (page size, orientation, margins, numbering style, background template) in collapsible sections.
-- A **page strip** across the bottom shows every page of the book as small thumbnails, which can be dragged to reorder.
+### Clipped-corner panels
 
-### Dashboard
+Every panel uses the PDF//SCOPE clipped corner (a 12px diagonal cut on the top-right), via `clip-path`. Use the same corner on the Noor Scope mark's container. Keep the clip-path off the PDF canvas itself.
 
-Calm and editorial, not a grid of colorful stat widgets. Use:
+### Background field
 
-- A greeting-style header in the serif display face, for example "Continue your Handy Book."
-- A "Continue" section with large recent-project cards.
-- A "Processing" strip that appears only while jobs are running.
-- Recent documents as a simple refined table, not a chart-heavy panel.
+The page background is a faint **eight-point star tessellation** drawn as a static SVG tile, at 3% opacity, in `--phos`. It replaces the square grid of PDF//SCOPE. It is static and never animated. Do not place it behind the PDF page.
 
 ---
 
-## 7. Bounding-Box Editor (critical visual craft)
+## 7. Components
 
-This is the signature interaction, so give it extra care.
+Build these components. Names are suggestions; keep them consistent.
 
-- **Idle box:** A 1px `--box-idle` border with a very light `--box-fill`. No heavy fill.
-- **Hover:** Border becomes `--box-hover`, and the fill increases slightly.
-- **Selected:** A 2px solid `--box-selected` border with **eight handles**: four corners and four edges. Handles are 8px squares with a surface-colored fill and a gold border. Show them only on selected or hovered boxes.
-- **Suggested by AI (unapproved):** A **dashed** `--box-suggest` border, with a small confidence chip in the corner (for example "94%"). Approved boxes switch to solid. This makes review obvious at a glance.
-- **Stanza number label:** A small pill in the top-left corner, styled in the serif face for Latin numerals or the Naskh face for Arabic numerals.
-- **Dragging:** The box shows a live dimension readout in monospace (w × h in PDF points), and faint alignment guides snap to neighbouring boxes and page margins.
-- **Canvas cursor:** Crosshair when drawing, grab when hovering a box, and the appropriate resize cursors on handles.
-- **Animations:** 120ms ease-out for hover and selection. Never animate the PDF canvas itself, since that causes flicker and wastes performance.
-
-Keep the overlay rendered as an SVG or absolutely positioned layer above the canvas. The overlay must never block scrolling or zooming unless the user is actively drawing or dragging.
-
----
-
-## 8. Motion and Micro-interactions
-
-- Use motion sparingly and purposefully. Durations: 120ms for hovers, 200ms for panels and popovers, 280ms for page transitions.
-- Easing: `cubic-bezier(0.2, 0, 0, 1)` for most motion.
-- Respect `prefers-reduced-motion` by disabling non-essential animation.
-- **Loading:** Use skeletons that match the final layout shape, with a gentle shimmer in `--surface-2`. Never use generic spinners for content areas. Spinners are acceptable only for small inline actions.
-- **Indexing progress:** A thin gold progress line along the top of the document card, with a short text label such as "Indexed 412 of 5,108 pages · 38 Kalaam found." Keep it honest. Show real numbers, not decorative percentages.
-- **Drag and drop in the Handy Book:** The dragged item lifts with a soft shadow and slight rotation no greater than 1°. A gold insertion line marks the drop position. The list reflows smoothly.
-- **Toasts:** Appear bottom-right, use the surface-1 background with a colored left border, and dismiss automatically after 4 seconds unless they carry an error.
+| Component | Purpose | Notes |
+|---|---|---|
+| `<TopBar />` | Brand, status chips, theme button | Brand mark is an SVG |
+| `<PipelineStrip />` | Five-stage signal flow | Node and wire states per section 6 |
+| `<PipelineNode />` / `<Wire />` | Stage and connection | Pulse uses transform only |
+| `<PanelHeader />` | Uppercase label bar with count | Matches PDF//SCOPE `.panel h3` |
+| `<FileList />` | Documents with kind badges | Virtualised; fresh-item slide-in |
+| `<KalaamCatalogue />` | Searchable, virtualised Kalaam list | Search debounced 150 ms |
+| `<PageCanvas />` | PDF.js canvas, lazy rendered | Never animated; overlay is separate |
+| `<BoundingBox />` / `<BoxOverlay />` | Stanza selection layer | Section 8 |
+| `<Ruler />` | PDF-point ruler on top and left edges | Tick marks every 10 pt, labels every 50 pt |
+| `<StepInspector />` | Real backend steps with timings | Click a step to see its details |
+| `<ScopeTrace />` | Oscilloscope line of pages/second | Canvas, redraws on a 250 ms batch |
+| `<BackendLog />` | Log lines, colour by level | `aria-live="polite"`, throttled |
+| `<HandyBookStrip />` | Ordered page thumbnails | Drag to reorder |
+| `<FaultPanel />` | Readable fault report with copy button | Shows code, cause, fix, file:line |
+| `<Toast />` | Bottom-right notifications | Auto-dismiss 4 s; errors stay |
+| `<ThemePanel />` | Preset buttons, accent and background pickers | Saves to `localStorage` |
+| `<NumeralFormatter />` | Western, Arabic-Indic, or Persian digits | Uses a formatter, not string replacement |
+| `<ArabicText />` | Wraps Arabic-script text with `dir`, `lang`, and font | Used for every Arabic or Urdu string |
 
 ---
 
-## 9. Empty States and Onboarding
+## 8. Bounding-Box Editor (signature interaction)
 
-Every screen needs a deliberate empty state. Do not leave blank panels.
+| State | Visual |
+|---|---|
+| Idle | 1px `--line2` border, no fill |
+| Hover | 1px `--cyan` border, 6% `--cyan` fill |
+| Selected | 2px `--amber` border, eight handles (8px squares, `--panel` fill, `--amber` border) |
+| Suggested by detection (not approved) | Dashed 1px `--cyan` border, confidence chip in the corner ("94%") |
+| Approved | Solid 1px `--phos` border; a single gold pulse on approval (400 ms) |
+| Outside the box | The page is dimmed with a large `box-shadow` (the PDF//SCOPE technique) so the selected region stands out |
 
-- **Empty library:** A serif headline ("Begin with a manuscript"), one sentence of guidance, a primary "Import PDF" button, and a faint line-art illustration of an open book drawn in the gold accent. Keep it simple.
-- **No stanzas selected:** A short instruction with a keyboard hint, such as "Press B to draw a box, or click Detect to suggest stanzas."
-- **No results in search:** Show the query, then suggest adjusting the filters, and explain whether the document lacks searchable text.
+Other rules:
 
----
-
-## 10. Components and Patterns
-
-Use a component library such as **shadcn/ui** as a foundation, but **restyle every component** through the tokens above. The defaults must not be visible in the final UI.
-
-Build these custom components:
-
-- `<PageCanvas />`: PDF.js canvas with lazy rendering and an overlay layer.
-- `<BoundingBox />`: Handles interaction states described in section 7.
-- `<KalaamTree />`: Virtualised list for thousands of entries (use `react-virtual` or similar).
-- `<StanzaCard />`: Preview with lazy-loaded thumbnail.
-- `<BookStoryboard />`: Storyboard canvas for the Handy Book.
-- `<NumeralFormatter />`: Renders numbers in the selected numeral system.
-- `<ArabicText />`: Wraps any Arabic-script string with the correct `dir`, `lang`, and font.
-- `<IndexingStatus />`: Honest progress reporting.
-- `<CommandPalette />`: Global search and actions, opened with ⌘K or Ctrl+K.
-
-**Tooltips:** Every icon-only button must have a tooltip showing its name and keyboard shortcut.
-
-**Keyboard shortcuts:** Show a discoverable overlay on `?`. Include arrow keys for nudging a selected box by 1px, Shift plus arrow for 10px, and Alt plus arrow for resizing.
+- **Stanza label:** a small pill in the top-left corner. Use Amiri for Arabic-Indic numerals and JetBrains Mono for Western digits.
+- **Live readout:** while dragging, show width × height in PDF points in monospace, and show the `x, y` origin.
+- **Snap guides:** faint `--cyan` lines snap to neighbouring boxes and to margins.
+- **Cursors:** crosshair when drawing, grab on a box, resize cursors on handles.
+- **Overlay layer:** an absolutely positioned SVG above the canvas. It must not capture wheel or scroll events unless the user is drawing or dragging.
+- **Keyboard:** arrows nudge 1 pt, Shift+arrows 10 pt, Alt+arrows resize. The current box is announced to screen readers.
 
 ---
 
-## 11. Accessibility
+## 9. Animation Catalogue
 
-- All text meets WCAG AA contrast in both themes. Check the gold accent on parchment carefully, and use `--gold-600` for text only on light surfaces.
-- All interactive elements are keyboard reachable, with a visible focus ring in `--gold-400`, 2px, with 2px offset.
-- Bounding boxes must be operable by keyboard alone, with arrow-key nudging and a selectable list of boxes.
-- Provide `aria-label`s on canvases and overlays, and announce indexing and export completion through an `aria-live` region.
-- Never rely on color alone to convey verification state. Pair each color with an icon or text label.
+Every animation has a purpose. If an animation does not tell the user something, do not add it.
+
+| Trigger | Effect | Timing | Notes |
+|---|---|---|---|
+| App first load | Scope trace draws in the brand mark | 900 ms, once | Skipped on repeat visits and under reduced motion |
+| Pipeline node becomes active | LED blinks gold | 0.5 s steps, infinite while active | Stops when the node finishes |
+| Data flows between nodes | Pulse moves along the wire | 0.6 s linear, infinite while running | `transform` only |
+| Node finishes | LED turns steady emerald with a short flash | 300 ms | One time |
+| Node fails | Node shakes once and glows red | 400 ms shake | Also writes the fault to the log |
+| Indexing running | ScopeTrace draws live pages/second | Redraws every 250 ms | Pauses when the tab is hidden |
+| File dropped | Progress bar sweeps the drop zone | 1 s linear, infinite while uploading | `transform` only |
+| New file added to list | Slides in from the left with an emerald flash | 700 ms | Once per item |
+| Stanza drawn | Cyan scan line sweeps across the box once | 1 s ease-in-out | Shows the box is being created |
+| Suggestion approved | Box turns solid emerald with a gold pulse | 400 ms | Once |
+| Stanza added to Handy Book | Item drops in with a small overshoot and an emerald ring | 800 ms, `cubic-bezier(.2,.9,.3,1.2)` | Once |
+| Stanza removed | Spins out, flashes red, fades | 850 ms, ease-in | Once; the list then reflows |
+| Thumbnail hover | Lifts 2 px | 200 ms | `transform` only |
+| Export starts | Cover reveals top to bottom with a scan line | 1 s, once | The reveal is a clip-path inset |
+| Export finishes | Success toast slides in | 400 ms | Then auto-dismisses |
+| Fault opens | Panel glitches in (short horizontal jitter) | 500 ms | FAULTS chip blinks while the panel is open |
+| Theme change | Background and text colours cross-fade | 250 ms | Only on `body` and `:root`, never on every element |
+| Empty state | Faint star tile turns slowly | 90 s per turn, infinite | Only in empty states, paused when off-screen, off under reduced motion |
+
+**Motion rules**
+
+- Animate only `transform`, `opacity`, and `clip-path`. Avoid animating `top`, `left`, `width`, or `height`.
+- Use `box-shadow` glow only on small elements (LEDs, nodes, handles), never on large panels or the PDF page.
+- No more than **three** infinite animations on screen at once. Count them when adding a new one.
+- Pause every infinite animation when `document.visibilityState === "hidden"` (add a class on `<html>`).
+- Respect `prefers-reduced-motion: reduce`: remove all non-essential animations and keep state changes as colour changes only.
+- Durations: 120 ms for hover, 200 ms for panels, 250–400 ms for state changes, up to 1 s for one-off effects.
+- Easing: `cubic-bezier(.2,.9,.3,1.2)` for entries that should feel physical, `ease-in` for removals, `linear` for flow pulses.
 
 ---
 
-## 12. Performance Rules for UI
+## 10. Speed Without Compromise
 
-- Virtualise every long list: the Kalaam catalogue, the stanza library, and the document list.
-- Render only visible PDF pages, and cache rendered thumbnails.
-- Avoid re-rendering the whole page canvas when only the overlay changes. Keep them separate components with memoisation.
-- Use CSS `contain` and `will-change` sparingly, and only on the canvas layer during drag.
-- Debounce search input by about 150ms.
-- Do not block the main thread during PDF upload. Show progress and keep the rest of the UI responsive.
+The design must not cost speed. Targets below are **goals to measure**, not promises. Claude Code must measure them in a real browser before claiming any of them.
+
+- **Lazy rendering:** only visible PDF pages are rendered by PDF.js. Thumbnails are cached and rendered at low resolution.
+- **Virtualised lists:** the file list, the Kalaam catalogue, and the stanza library use windowing.
+- **Overlay separation:** the bounding-box overlay re-renders alone. The PDF canvas is never re-rendered when a box moves.
+- **Pointer events** are throttled to one update per animation frame (`requestAnimationFrame`).
+- **CSS containment:** apply `contain: layout paint` to each panel and to the viewer, so one panel's changes do not force the whole page to recalculate.
+- **Backend log and ScopeTrace** are updated in batches every 250 ms, not on every message.
+- **Search** is debounced at 150 ms and runs on an indexed catalogue, not on the rendered list.
+- **No `backdrop-filter`** on working surfaces. It is expensive on large views.
+- **Static SVG** for the background tile and brand mark, so they are not re-rasterised on each frame.
+- **Indexing and export run in a background worker.** The UI stays responsive during upload and processing.
+
+**Targets to measure** (record actual numbers, not estimates):
+- Shell interactive in under 1 s on the owner's machine (cold, local).
+- Pointer-driven box drag stays near 60 fps (check the Chrome Performance panel).
+- Opening a 5,000-page document shows the first page without rendering the rest.
 
 ---
 
-## 13. Things to Avoid (Anti-patterns Checklist)
+## 11. Engineer-Friendly Behaviour
 
-Before finishing any screen, verify that none of the following appear:
+- **Units everywhere.** Coordinates are PDF points, sizes are millimetres or points, times are milliseconds. Never show a bare number.
+- **Hover reveals the formula.** For example, hovering the scaled-size readout shows `scale = output_w / source_w` with the values filled in.
+- **"Show technical details" toggle** on every panel that shows a computed value. Off by default for a clean view.
+- **Step Inspector** lists the real backend steps (for example `parse_outline`, `resolve_link`, `clip_region`), each with its duration and inputs.
+- **Copyable fault reports** with the error code, cause, fix suggestion, failing step, file and line, and stack trace.
+- **Keyboard shortcuts** shown with `?`: `B` draw box, `Delete` remove, `Ctrl/⌘+Z` undo, `Ctrl/⌘+Shift+Z` redo, `Ctrl/⌘+K` command palette, `[` and `]` previous and next stanza.
 
-- [ ] Default shadcn/ui or Tailwind colors left unstyled.
-- [ ] Purple, indigo, or blue-to-pink gradients.
-- [ ] Glassmorphism or heavy blur on working surfaces.
-- [ ] Emoji used as icons.
-- [ ] Generic spinners for content loading.
-- [ ] Stat cards with decorative sparklines on the dashboard.
-- [ ] Pure white or pure black backgrounds.
-- [ ] Hardcoded hex values in component files.
-- [ ] Arabic text inheriting the Latin font, or left-aligned RTL text.
-- [ ] Bounding boxes that look identical whether AI-suggested or approved.
-- [ ] Hidden or unlabelled icon buttons.
-- [ ] Empty panels without a designed empty state.
-- [ ] Decorative Islamic ornament on working screens.
+---
+
+## 12. Accessibility
+
+- All text passes WCAG AA contrast in every preset. Check it, do not assume it.
+- Never rely on colour alone. Each LED state is paired with a text label or icon.
+- All controls are keyboard reachable with a visible focus ring in `--amber`, 2px, with 2px offset.
+- Canvases and overlays have `aria-label`s. The backend log uses `aria-live="polite"` and is throttled so screen readers are not flooded.
+- Reduced motion removes the animations in section 9 (except state colour changes).
+
+---
+
+## 13. Process for Claude Code
+
+Read the reference first: the owner's PDF//SCOPE repo at `github.com/moizzzz5253/pdf-editor`, in particular `app/static/style.css`, `app/static/theme.js`, and `app/static/index.html`. Use it to match the look and motion. Port the approach (CSS variables on `:root`, presets saved to `localStorage`, the clipped panel, and the LED and pipeline patterns). Do not copy its vanilla JavaScript; this app is React and TypeScript.
+
+Then build in this order:
+
+1. **Tokens and theme.** Create `tokens.css` with the four presets. Port `theme.js` as a small React hook. Build a `/styleguide` route that shows every token, button, LED state, box state, and animation, so the owner can review them before any feature screen is built.
+2. **Shell and pipeline.** Top bar, pipeline strip with the five stages (with fake timing data, clearly labelled as sample), and the theme panel.
+3. **Library.** Upload, file list, Kalaam catalogue. Show the empty, loading, error, and populated states.
+4. **Viewer and Stanza Editor.** PDF.js page, box overlay, ruler, filmstrip, Step Inspector.
+5. **Handy Book Studio.** Page-spread canvas and strip.
+6. **Settings.**
+
+For each screen, check:
+- Empty, loading, error, and populated states.
+- Arabic and Urdu text (a long Urdu title, a short Arabic title, and a mixed Latin-Arabic title).
+- All four presets, including contrast.
+- A 1024px-wide window.
+- Keyboard-only navigation.
+- Reduced motion turned on.
+- The count of infinite animations on screen (must stay at three or fewer).
+
+**Browser testing is required.** The project brief says the viewer has not yet been verified in a real browser. Do not mark any screen as done until it has been checked in a real browser, and say clearly what was and was not tested.
+
+Take screenshots after each screen, describe any visual problems you see, then fix them.
+
+Record every deviation from this brief in `DESIGN_NOTES.md` with the reason. Do not deviate silently.
+
+---
+
+## 14. Anti-patterns Checklist
+
+Before finishing any screen, verify that none of these appear:
+
+- [ ] Hardcoded hex colours in component files (use the tokens).
+- [ ] Neon glows on large panels, the PDF page, or body text.
+- [ ] Animations on `top`, `left`, `width`, or `height`.
+- [ ] More than three infinite animations on one screen.
+- [ ] Islamic ornament behind text, the PDF page, or a bounding box.
+- [ ] Any depiction of a person, or any logo or emblem of an organisation.
+- [ ] Arabic or Urdu text in the Latin font, or left-aligned RTL text.
+- [ ] Bounding boxes that look the same when suggested and when approved.
+- [ ] Numbers without units.
+- [ ] Icon-only buttons without a tooltip and shortcut.
+- [ ] Generic spinners for content areas.
+- [ ] Blank panels without an empty state.
 - [ ] Text smaller than 12px.
+- [ ] A feature marked as done before it has been checked in a real browser.
 
 ---
 
-## 14. Process Instructions for Claude Code
-
-1. **Set up the token file and fonts first.** Create `tokens.css`, load the fonts, and build a small `/styleguide` route that renders every token, type style, button state, and box state. Review it visually before building any feature screen.
-2. **Build the app shell** (rail, top bar, theme toggle, command palette) and confirm it works in both light and dark modes.
-3. **Build one complete screen at a time**, in this order: Library, then the Viewer and Stanza Editor, then the Stanza Library, then the Handy Book Studio, then Settings. Do not start a second screen until the first is polished.
-4. **For each screen, verify:** empty state, loading state, error state, populated state, RTL content, dark mode, keyboard navigation, and a narrow window of about 1024px.
-5. **Take screenshots** of each screen after completing it, and describe any visual issues you notice before fixing them.
-6. **Document any deviation** from these instructions in a `DESIGN_NOTES.md` file, with the reason. Do not deviate silently.
-
-If you are unsure between two visual options, choose the one that is calmer, more typographically refined, and more restrained. Restraint is the core of this design.
-
----
-
-## 15. Definition of Done for the Design
+## 15. Definition of Done
 
 The UI is complete when:
 
-- A first-time user can import a PDF, find a Kalaam, and draw a box without needing instructions.
-- Arabic, Urdu, and English text all look intentional and correctly aligned.
-- The source PDF page is clearly the focus of every viewer screen.
-- Light and dark themes are both polished, not merely inverted.
-- The app looks like a designed product, not a template with the default theme applied.
+- A first-time user can see the pipeline, import a PDF, find a Kalaam, and draw a box without reading any instructions.
+- The pipeline shows real state and real timings, so a user can tell what the software is doing at any moment.
+- Arabic, Urdu, and English text all look intentional and correctly aligned, in every preset.
+- The source PDF page is clearly the focus of every viewer screen, and nothing sits on top of it except the box overlay.
+- All four presets pass contrast checks, and the theme choice persists across reloads.
+- Animations add meaning, stay under the performance limits in section 9, and are off under reduced motion.
+- The app feels like the PDF//SCOPE concept, reskinned for Kalaam, not like a generic dashboard with a green colour.
+- Nothing in the app depicts a person or uses a logo or emblem of any organisation.
