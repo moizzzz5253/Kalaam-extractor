@@ -53,12 +53,14 @@ If the backend runs on another port, set `KX_API_URL` (e.g. in a git-ignored `fr
 Implemented: library list, PDF import with duplicate feedback, indexing on open (stored index reused),
 lazy page rendering with a bounded canvas count, bookmark navigation, page jump, internal link hit-areas.
 
-Verified: typecheck and production build pass; `/api` proxy verified end to end with curl.
-Verified in a real browser (synthetic test PDF only): library list, opening a document, page rendering,
-bookmark and contents-link navigation, previous/next, page jump, zoom. No console errors.
+UI follows `docs/frontend-design-instructions.md` ("Manuscript Atelier"): icon rail and top bar,
+light/dark themes, drag-and-drop import, bookmark filter, floating page/zoom toolbar with fit-to-width,
+page filmstrip, keyboard shortcuts (← → Home End + −). Deviations are listed in `DESIGN_NOTES.md`.
 
-Known rough edges: after zooming, the view drifts slightly (end of the previous page shows above the
-current one); file sizes under 0.1 MB show as "0.0 MB".
+Verified: typecheck and production build pass; `/api` proxy verified end to end with curl.
+Verified in a real browser with the synthetic fixture and the real 30-page sample: library, opening,
+page rendering, bookmarks, index-grid links, filmstrip, previous/next, page jump, zoom (current page
+stays anchored), fit width, keyboard shortcuts, returning from the library keeps the page, both themes.
 
 Known simplifications: link hit-areas assume an unrotated page with no CropBox offset;
 named destinations are not navigable yet.

@@ -66,4 +66,7 @@ export const api = {
     ),
 
   pdfUrl: (id: number) => `/api/documents/${id}/pdf`,
+
+  pageImageUrl: (id: number, page0: number, zoom: number) =>
+    `/api/documents/${id}/pages/${page0}.png?zoom=${zoom}`,
 };

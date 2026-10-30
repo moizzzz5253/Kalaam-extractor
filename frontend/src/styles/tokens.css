@@ -1,0 +1,122 @@
+/* Design tokens: "Manuscript Atelier". Components use these, never raw hex values.
+   See docs/frontend-design-instructions.md section 3. */
+
+:root {
+  /* Surfaces: light */
+  --surface-0: #F7F3EA;   /* app background, parchment */
+  --surface-1: #FBF8F1;   /* cards, panels */
+  --surface-2: #F0EADB;   /* inset wells, toolbars, PDF desk */
+  --surface-3: #E6DCC7;   /* pressed / active */
+  --ink-900:   #1E1B16;   /* primary text */
+  --ink-700:   #4A443A;   /* secondary text */
+  --ink-500:   #7A7263;   /* tertiary, placeholders */
+  --hairline:  #D9CFBA;   /* dividers, borders */
+  --paper:     #FDFBF6;   /* page placeholder before a PDF page renders */
+
+  /* Accents */
+  --gold-600: #A8822E;    /* primary action */
+  --gold-400: #C9A55A;    /* hover, focus ring */
+  --gold-100: #F3EAD3;    /* selected row background */
+  --on-gold:  #FBF8F1;    /* text on a gold button */
+  --teal-600: #1F6F66;    /* verified, success */
+  --teal-100: #DCEEEB;
+  --terracotta-600: #B2573A;  /* warning */
+  --terracotta-100: #F5E2D9;
+  --oxblood-600: #7E2B2B;     /* error, destructive */
+  --oxblood-100: #F1DCDA;
+
+  /* Bounding-box overlay */
+  --box-idle:     rgba(168, 130, 46, 0.55);
+  --box-hover:    rgba(168, 130, 46, 0.85);
+  --box-selected: #A8822E;
+  --box-fill:     rgba(201, 165, 90, 0.12);
+  --box-suggest:  #1F6F66;
+
+  /* Elevation */
+  --shadow-raised:   0 1px 2px rgba(30, 27, 22, 0.06);
+  --shadow-page:     0 1px 3px rgba(30, 27, 22, 0.12), 0 8px 24px -12px rgba(30, 27, 22, 0.18);
+  --shadow-floating: 0 12px 32px -8px rgba(30, 27, 22, 0.22), 0 2px 6px rgba(30, 27, 22, 0.08);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* Spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* Type */
+  --font-ui: "Inter", "Noto Naskh Arabic", system-ui, sans-serif;
+  --font-serif: "Fraunces", "Amiri", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --font-arabic: "Noto Naskh Arabic", "Amiri", "Scheherazade New", serif;
+  --font-urdu: "Noto Nastaliq Urdu", "Noto Naskh Arabic", serif;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-hover: 120ms;
+  --dur-panel: 200ms;
+
+  color-scheme: light;
+}
+
+/* Dark: follows the OS unless the user picked a theme explicitly. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface-0: #17151F;
+    --surface-1: #1F1C27;
+    --surface-2: #27232F;
+    --surface-3: #332E3D;
+    --ink-900:   #F2EDE2;
+    --ink-700:   #C9C1AF;
+    --ink-500:   #8F8775;
+    --hairline:  #3A3445;
+    --paper:     #2C2836;
+    --gold-600:  #D2B06A;
+    --gold-400:  #E3C98E;
+    --gold-100:  #3A3122;
+    --on-gold:   #1E1B16;
+    --teal-600:  #6FBFB3;
+    --teal-100:  #1E3532;
+    --terracotta-600: #E0937A;
+    --terracotta-100: #3B2722;
+    --oxblood-600: #E59A9A;
+    --oxblood-100: #3A2226;
+    --shadow-raised:   0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-page:     0 1px 3px rgba(0, 0, 0, 0.4), 0 10px 28px -12px rgba(0, 0, 0, 0.6);
+    --shadow-floating: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --surface-0: #17151F;
+  --surface-1: #1F1C27;
+  --surface-2: #27232F;
+  --surface-3: #332E3D;
+  --ink-900:   #F2EDE2;
+  --ink-700:   #C9C1AF;
+  --ink-500:   #8F8775;
+  --hairline:  #3A3445;
+  --paper:     #2C2836;
+  --gold-600:  #D2B06A;
+  --gold-400:  #E3C98E;
+  --gold-100:  #3A3122;
+  --on-gold:   #1E1B16;
+  --teal-600:  #6FBFB3;
+  --teal-100:  #1E3532;
+  --terracotta-600: #E0937A;
+  --terracotta-100: #3B2722;
+  --oxblood-600: #E59A9A;
+  --oxblood-100: #3A2226;
+  --shadow-raised:   0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-page:     0 1px 3px rgba(0, 0, 0, 0.4), 0 10px 28px -12px rgba(0, 0, 0, 0.6);
+  --shadow-floating: 0 12px 32px -8px rgba(0, 0, 0, 0.55), 0 2px 6px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
